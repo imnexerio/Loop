@@ -78,12 +78,14 @@ const Login = () => {
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-primary-600 rounded-2xl mb-3 sm:mb-4 shadow-lg">
-            <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          <div className="inline-flex items-center justify-center mb-3 sm:mb-4">
+            <img 
+              src="/pwa-512x512.png"
+              alt="Loop Logo" 
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl shadow-lg"
+            />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Habit Tracker</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Loop</h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2 px-4">Build better habits, one day at a time</p>
         </div>
 

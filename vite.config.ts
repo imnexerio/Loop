@@ -8,11 +8,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'Copilot_20251011_111421.png'],
       manifest: {
-        name: 'Habit Tracker',
-        short_name: 'Habits',
-        description: 'Track your daily habits and build better routines',
+        name: 'Loop - Habit Tracker',
+        short_name: 'Loop',
+        description: 'Build better habits, one day at a time',
         theme_color: '#22c55e',
         background_color: '#ffffff',
         display: 'standalone',

@@ -65,10 +65,24 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20 p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen pb-20">
       <div className="max-w-6xl mx-auto">
+        {/* Header with Logo */}
+        <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-3">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/pwa-512x512.png"
+                alt="Loop" 
+                className="w-10 h-10 rounded-xl shadow-md"
+              />
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Loop</h1>
+            </div>
+          </div>
+        </header>
+
         {/* Tab Content */}
-        <div className="mb-6">
+        <div className="mb-6 p-4 sm:p-6 md:p-8">
           {activeTab === 'analysis' && (
             <AnalysisTab 
               tags={tags} 
