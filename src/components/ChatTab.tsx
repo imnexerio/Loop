@@ -1,6 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { getDayLogCached } from '../services/dataManager'
+import { sendToGemini, generateHabitContext } from '../services/gemini'
+import { Tag, DayLog } from '../types'
+import ReactMarkdown from 'react-markdown'
 
-const ChatTab = () => {
+interface ChatTabProps {
+  tags: Tag[]
+}
+
+const ChatTab = ({ tags }: ChatTabProps) => {
+  const { currentUser } = useAuth()
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string }[]>([
     {
       role: 'ai',
@@ -9,11 +19,48 @@ const ChatTab = () => {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [recentLogs, setRecentLogs] = useState<DayLog[]>([])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Load recent logs for context
+  useEffect(() => {
+    const loadRecentLogs = async () => {
+      if (!currentUser) return
+
+      const logs: DayLog[] = []
+      const today = new Date()
+      
+      // Get last 7 days of logs
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today)
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+        
+        try {
+          const log = await getDayLogCached(currentUser.uid, dateStr)
+          if (log && log.sessions.length > 0) {
+            logs.push(log)
+          }
+        } catch (error) {
+          console.error('Error loading log:', error)
+        }
+      }
+      
+      setRecentLogs(logs)
+    }
+
+    loadRecentLogs()
+  }, [currentUser])
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
 
   const suggestedQuestions = [
-    'What\'s my average mood this week?',
-    'When am I most productive?',
-    'Show my weekly trends',
+    'What are my most tracked habits?',
+    'Show me insights from this week',
+    'What patterns do you notice?',
     'How can I improve my habits?'
   ]
 
@@ -26,15 +73,42 @@ const ChatTab = () => {
     setInput('')
     setLoading(true)
 
-    // TODO: Integrate with Gemini API
-    // For now, show a placeholder response
-    setTimeout(() => {
+    try {
+      // Generate context from user's habit data
+      const dateRange = recentLogs.length > 0 
+        ? { start: recentLogs[recentLogs.length - 1].date, end: recentLogs[0].date }
+        : { start: 'N/A', end: 'N/A' }
+      
+      const habitContext = generateHabitContext(tags, recentLogs, dateRange)
+
+      // Get AI response
+      const aiResponse = await sendToGemini(
+        userMessage.content,
+        messages,
+        habitContext
+      )
+
+      // Add AI response
       setMessages(prev => [...prev, {
         role: 'ai',
-        content: 'AI integration coming soon! This will connect to Gemini (or your chosen LLM) to provide personalized insights based on your habit data.'
+        content: aiResponse
       }])
+    } catch (error: any) {
+      console.error('Error getting AI response:', error)
+      
+      let errorMessage = '❌ Sorry, I encountered an error. Please try again.'
+      
+      if (error.message?.includes('API key')) {
+        errorMessage = '🔑 **API Key Required**\n\nTo use the AI chat feature, you need to:\n\n1. Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)\n2. Create a `.env` file in the project root\n3. Add: `VITE_GEMINI_API_KEY=your_key_here`\n4. Restart the development server'
+      }
+      
+      setMessages(prev => [...prev, {
+        role: 'ai',
+        content: errorMessage
+      }])
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const handleSuggestion = (question: string) => {
@@ -78,7 +152,28 @@ const ChatTab = () => {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
               }`}
             >
-              <p className="text-sm sm:text-base whitespace-pre-wrap">{message.content}</p>
+              {message.role === 'user' ? (
+                <p className="text-sm sm:text-base whitespace-pre-wrap">{message.content}</p>
+              ) : (
+                <div className="text-sm sm:text-base prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                      ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="ml-2">{children}</li>,
+                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                      em: ({ children }) => <em className="italic">{children}</em>,
+                      code: ({ children }) => <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-xs">{children}</code>,
+                      h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -114,6 +209,9 @@ const ChatTab = () => {
             </div>
           </div>
         )}
+        
+        {/* Auto-scroll anchor */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}

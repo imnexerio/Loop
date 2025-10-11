@@ -90,7 +90,7 @@ const Dashboard = () => {
               refreshTrigger={refreshKey}
             />
           )}
-          {activeTab === 'chat' && <ChatTab />}
+          {activeTab === 'chat' && <ChatTab tags={tags} />}
           {activeTab === 'profile' && (
             <ProfileTab 
               tags={tags}
