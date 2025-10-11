@@ -75,9 +75,20 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
   useEffect(() => {
     if (!currentUser?.uid || chats.length === 0) return
 
+    // Filter out chats with only the initial AI greeting (no user interaction)
+    const chatsToSave = chats.filter(chat => {
+      // Only save if there's more than just the initial AI message
+      return chat.messages.length > 1
+    })
+
     const storageKey = `chat_conversations_${currentUser.uid}`
     try {
-      localStorage.setItem(storageKey, JSON.stringify(chats))
+      if (chatsToSave.length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(chatsToSave))
+      } else {
+        // If no chats to save, remove from storage
+        localStorage.removeItem(storageKey)
+      }
     } catch (error) {
       console.error('Error saving chats:', error)
     }
@@ -85,19 +96,28 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
 
   // Create a new chat
   const createNewChat = () => {
-    const newChat: Chat = {
-      id: Date.now().toString(),
-      title: 'New Conversation',
-      messages: [{
-        role: 'ai',
-        content: 'Hello! I\'m your habit tracking assistant. I can help you analyze your habits, suggest improvements, and answer questions about your progress. What would you like to know?'
-      }],
-      createdAt: Date.now(),
-      lastMessageAt: Date.now()
-    }
+    // Before creating new chat, clean up the current one if it's empty
+    setChats(prev => {
+      const filtered = prev.filter(chat => {
+        // Keep chats that have more than just the initial AI message
+        return chat.messages.length > 1
+      })
+      
+      const newChat: Chat = {
+        id: Date.now().toString(),
+        title: 'New Conversation',
+        messages: [{
+          role: 'ai',
+          content: 'Hello! I\'m your habit tracking assistant. I can help you analyze your habits, suggest improvements, and answer questions about your progress. What would you like to know?'
+        }],
+        createdAt: Date.now(),
+        lastMessageAt: Date.now()
+      }
+      
+      return [newChat, ...filtered]
+    })
     
-    setChats(prev => [newChat, ...prev])
-    setCurrentChatId(newChat.id)
+    setCurrentChatId(Date.now().toString())
     setShowSidebar(false)
   }
 

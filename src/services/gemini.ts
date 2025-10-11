@@ -68,7 +68,7 @@ export function generateHabitContext(
         })
         context += `  • ${time}: ${session.description}\n`
         
-        // Add tag values
+        // Add tag values (Note: imageId is intentionally excluded from context)
         Object.entries(session.tags || {}).forEach(([tagId, value]) => {
           const tag = tags.find(t => t.id === tagId)
           if (tag) {
