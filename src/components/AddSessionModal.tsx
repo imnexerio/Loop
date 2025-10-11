@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addSessionCached } from '../services/dataManager'
 import { Tag, Session } from '../types'
@@ -15,67 +15,41 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
   const [description, setDescription] = useState('')
   const [tagValues, setTagValues] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
-  const [sessionCreated, setSessionCreated] = useState(false)
-  const [currentSessionTimestamp, setCurrentSessionTimestamp] = useState<string | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
-  // Auto-save function with debouncing
-  const saveSession = useCallback(async () => {
+  // Manual save function
+  const saveSession = async () => {
     if (!currentUser || !description.trim()) return
 
     setSaving(true)
     try {
       const session: Session = {
-        timestamp: currentSessionTimestamp || new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         description: description.trim(),
         tags: tagValues
       }
 
-      if (!sessionCreated) {
-        // Create new session
-        await addSessionCached(currentUser.uid, today, session)
-        setSessionCreated(true)
-        setCurrentSessionTimestamp(session.timestamp)
-      } else {
-        // Update existing session (find it by timestamp)
-        // Note: In a real app, you'd need to track the session index
-        // For now, we'll just add a new session each time
-      }
-
+      await addSessionCached(currentUser.uid, today, session)
       onSessionAdded()
+      onClose()
     } catch (error) {
       console.error('Error saving session:', error)
+      alert('Failed to save session. Please try again.')
     } finally {
       setSaving(false)
     }
-  }, [currentUser, description, tagValues, sessionCreated, currentSessionTimestamp, today, onSessionAdded])
-
-  // Debounced auto-save effect
-  useEffect(() => {
-    if (!description.trim()) return
-
-    const timer = setTimeout(() => {
-      saveSession()
-    }, 2000) // Save after 2 seconds of no typing
-
-    return () => clearTimeout(timer)
-  }, [description, tagValues, saveSession])
+  }
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setDescription('')
       setTagValues({})
-      setSessionCreated(false)
-      setCurrentSessionTimestamp(null)
     }
   }, [isOpen])
 
   const handleClose = () => {
-    if (description.trim() && !sessionCreated) {
-      saveSession()
-    }
     onClose()
   }
 
@@ -240,15 +214,6 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
               placeholder="I am working on..."
               autoFocus
             />
-            {saving && (
-              <p className="text-xs text-primary-600 dark:text-primary-400 mt-2 flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Saving...
-              </p>
-            )}
           </div>
 
           {/* Tags */}
@@ -274,13 +239,29 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3">
           <button
             onClick={handleClose}
-            disabled={!description.trim()}
-            className="w-full py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors"
+            className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-xl transition-colors"
           >
-            Done
+            Cancel
+          </button>
+          <button
+            onClick={saveSession}
+            disabled={!description.trim() || saving}
+            className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              'Save Session'
+            )}
           </button>
         </div>
       </div>

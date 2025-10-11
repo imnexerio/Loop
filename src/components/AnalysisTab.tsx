@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Calendar from './analysis/Calendar'
 import DayView from './analysis/DayView'
 import Charts from './analysis/Charts'
@@ -11,7 +11,14 @@ interface AnalysisTabProps {
 }
 
 const AnalysisTab = ({ tags, onAddSession, refreshTrigger }: AnalysisTabProps) => {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  // Initialize with today's date
+  const today = new Date().toISOString().split('T')[0]
+  const [selectedDate, setSelectedDate] = useState<string | null>(today)
+
+  // Auto-select today's date on mount
+  useEffect(() => {
+    setSelectedDate(today)
+  }, [])
 
   const handleDateSelect = (date: string) => {
     // If clicking the same date, keep it selected (don't toggle)
