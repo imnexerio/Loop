@@ -273,22 +273,26 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
   }
 
   return (
-    <div className="fixed inset-0 top-16 left-0 right-0 bottom-16 bg-white dark:bg-gray-900 flex">
-      {/* Sidebar */}
-      <div className={`${showSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col absolute lg:relative inset-0 lg:inset-auto z-30 lg:z-auto`}>
+    <div className="fixed inset-0 top-16 left-0 right-0 bottom-16 bg-white dark:bg-gray-900 flex overflow-hidden">
+      {/* Overlay for mobile when sidebar is open */}
+      {showSidebar && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-20 transition-opacity duration-300"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
+      {/* Sidebar with slide animation */}
+      <div className={`
+        w-80 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-30
+        transition-transform duration-300 ease-in-out
+        ${showSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Conversations</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={createNewChat}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="New chat"
-            >
-              <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Conversations</h3>
             <button
               onClick={() => setShowSidebar(false)}
               className="lg:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -298,6 +302,20 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
               </svg>
             </button>
           </div>
+          
+          {/* New Conversation Button */}
+          <button
+            onClick={() => {
+              createNewChat()
+              setShowSidebar(false)
+            }}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Conversation
+          </button>
         </div>
 
         {/* Chat List */}
