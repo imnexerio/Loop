@@ -16,20 +16,13 @@ const DayView = ({ date, tags, onBack, onAddSession, refreshTrigger }: DayViewPr
   const [dayLog, setDayLog] = useState<DayLog | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Debug: Log when component renders
-  useEffect(() => {
-    console.log('📋 DayView rendered', { date, refreshTrigger, loading })
-  })
-
   useEffect(() => {
     if (!currentUser) return
 
-    console.log('🔍 DayView loading data for:', date)
     const loadDayLog = async () => {
       setLoading(true)
       try {
         const log = await getDayLog(currentUser.uid, date)
-        console.log('✅ DayView data loaded:', log)
         setDayLog(log)
       } catch (error) {
         console.error('Error loading day log:', error)
@@ -96,7 +89,7 @@ const DayView = ({ date, tags, onBack, onAddSession, refreshTrigger }: DayViewPr
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl mx-auto">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
       {/* Header */}
       <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
         <div>

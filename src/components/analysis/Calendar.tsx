@@ -109,7 +109,7 @@ const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps)
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 max-w-2xl mx-auto">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6">
       {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
