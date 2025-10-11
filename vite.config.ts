@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'Habit Tracker',
         short_name: 'Habits',
         description: 'Track your daily habits and build better routines',
-        theme_color: '#6366f1',
+        theme_color: '#22c55e',
         background_color: '#ffffff',
         display: 'standalone',
         icons: [
