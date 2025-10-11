@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserTags } from '../services/firestore'
+import { getTags } from '../services/dataManager'
 import { Tag } from '../types'
 import AnalysisTab from './AnalysisTab'
 import ChatTab from './ChatTab'
@@ -22,7 +22,7 @@ const Dashboard = () => {
 
     const loadTags = async () => {
       try {
-        const userTags = await getUserTags(currentUser.uid)
+        const userTags = await getTags(currentUser.uid)
         setTags(userTags)
       } catch (error) {
         console.error('Error loading tags:', error)
@@ -32,14 +32,14 @@ const Dashboard = () => {
     loadTags()
   }, [currentUser, refreshKey])
 
-  const handleSessionAdded = () => {
+  const handleSessionAdded = useCallback(() => {
     setShowAddSession(false)
     setRefreshKey(prev => prev + 1)
-  }
+  }, [])
 
-  const handleTagsChange = () => {
+  const handleTagsChange = useCallback(() => {
     setRefreshKey(prev => prev + 1)
-  }
+  }, [])
 
   const getTabIcon = (tab: TabType) => {
     switch (tab) {

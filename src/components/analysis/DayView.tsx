@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { getDayLog } from '../../services/firestore'
+import { getDayLogCached } from '../../services/dataManager'
 import { DayLog, Tag } from '../../types'
 
 interface DayViewProps {
@@ -22,7 +22,7 @@ const DayView = ({ date, tags, onBack, onAddSession, refreshTrigger }: DayViewPr
     const loadDayLog = async () => {
       setLoading(true)
       try {
-        const log = await getDayLog(currentUser.uid, date)
+        const log = await getDayLogCached(currentUser.uid, date, refreshTrigger !== undefined)
         setDayLog(log)
       } catch (error) {
         console.error('Error loading day log:', error)

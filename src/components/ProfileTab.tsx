@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Tag, TagType } from '../types'
-import { createTag, deleteTag } from '../services/firestore'
+import { createTagCached, deleteTagCached, clearCache } from '../services/dataManager'
 
 interface ProfileTabProps {
   tags: Tag[]
@@ -42,7 +42,7 @@ const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
         tagConfig.unit = newTag.unit
       }
 
-      await createTag(currentUser.uid, {
+      await createTagCached(currentUser.uid, {
         name: newTag.name,
         type: newTag.type,
         config: tagConfig,
@@ -62,7 +62,7 @@ const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
     if (!confirm('Are you sure you want to delete this tag?')) return
 
     try {
-      await deleteTag(currentUser.uid, tagId)
+      await deleteTagCached(currentUser.uid, tagId)
       onTagsChange()
     } catch (error) {
       console.error('Error deleting tag:', error)

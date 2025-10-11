@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addSession } from '../services/firestore'
+import { addSessionCached } from '../services/dataManager'
 import { Tag, Session } from '../types'
 
 interface AddSessionModalProps {
@@ -34,7 +34,7 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
 
       if (!sessionCreated) {
         // Create new session
-        await addSession(currentUser.uid, today, session)
+        await addSessionCached(currentUser.uid, today, session)
         setSessionCreated(true)
         setCurrentSessionTimestamp(session.timestamp)
       } else {

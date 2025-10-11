@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { getMonthDaysWithSessions } from '../../services/firestore'
+import { getMonthDaysWithSessionsCached } from '../../services/dataManager'
 
 interface CalendarProps {
   onDateSelect: (date: string) => void
@@ -32,7 +32,7 @@ const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps)
       const yearStr = year.toString()
       const monthStr = (month + 1).toString().padStart(2, '0')
       
-      const days = await getMonthDaysWithSessions(currentUser.uid, yearStr, monthStr)
+      const days = await getMonthDaysWithSessionsCached(currentUser.uid, yearStr, monthStr, refreshTrigger !== undefined)
       setDaysWithSessions(new Set(days))
     }
 

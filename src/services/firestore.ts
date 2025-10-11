@@ -215,3 +215,61 @@ export const getMonthDaysWithSessions = async (
     return []
   }
 }
+
+// Get tag values over a date range for charting
+export const getTagDataRange = async (
+  userId: string,
+  tagId: string,
+  days: number = 30
+): Promise<{ date: string; value: number | null }[]> => {
+  try {
+    const result: { date: string; value: number | null }[] = []
+    const today = new Date()
+    
+    // Create array of date strings
+    const dateStrings: string[] = []
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      dateStrings.push(date.toISOString().split('T')[0])
+    }
+    
+    // Batch fetch all day logs in parallel
+    const dayLogsPromises = dateStrings.map(dateStr => getDayLog(userId, dateStr))
+    const dayLogs = await Promise.all(dayLogsPromises)
+    
+    // Process each day's data
+    dateStrings.forEach((dateStr, index) => {
+      const dayLog = dayLogs[index]
+      
+      // Calculate average value for this tag across all sessions on this day
+      let totalValue = 0
+      let count = 0
+      
+      if (dayLog && dayLog.sessions) {
+        dayLog.sessions.forEach(session => {
+          if (session.tags[tagId] !== undefined) {
+            const value = session.tags[tagId]
+            if (typeof value === 'number') {
+              totalValue += value
+              count++
+            } else if (typeof value === 'boolean') {
+              totalValue += value ? 1 : 0
+              count++
+            }
+          }
+        })
+      }
+      
+      result.push({
+        date: dateStr,
+        value: count > 0 ? totalValue / count : null
+      })
+    })
+    
+    return result
+  } catch (error) {
+    console.error('Error getting tag data range:', error)
+    return []
+  }
+}
