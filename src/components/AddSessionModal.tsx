@@ -140,6 +140,7 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
       }
       
       // Success!
+      setSaving(false)
       onSessionAdded()
       onClose()
       
@@ -182,6 +183,7 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
       setTagValues({})
       setSelectedImage(null)
       setImagePreview('')
+      setSaving(false) // Reset saving state from previous save
       
       // Focus textarea only once when modal opens (not on every re-render)
       setTimeout(() => {
@@ -201,13 +203,20 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
     }))
   }
   
-  // Prevent keyboard from popping up when interacting with sliders
-  const handleSliderInteraction = (tagId: string, value: any) => {
-    // Blur any focused input to prevent keyboard popup
-    if (document.activeElement instanceof HTMLElement) {
+  // Handle slider interaction with proper focus management
+  // This is the CORRECT way to handle touch-based sliders on mobile
+  // Range inputs don't naturally take focus, so we explicitly blur text inputs
+  const handleSliderChange = (tagId: string, value: number) => {
+    handleTagChange(tagId, value)
+  }
+  
+  // Blur any focused input when user starts interacting with non-text controls
+  // This provides a better mobile UX by dismissing the keyboard
+  const blurFocusedInput = () => {
+    if (document.activeElement instanceof HTMLInputElement || 
+        document.activeElement instanceof HTMLTextAreaElement) {
       document.activeElement.blur()
     }
-    handleTagChange(tagId, value)
   }
 
   const renderTagInput = (tag: Tag) => {
@@ -226,13 +235,9 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
                 min={tag.config.min || 0}
                 max={tag.config.max || 100}
                 value={value || tag.config.min || 0}
-                onChange={(e) => handleSliderInteraction(tag.id, parseInt(e.target.value))}
-                onTouchStart={() => {
-                  // On mobile, blur any focused input when touching slider
-                  if (document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur()
-                  }
-                }}
+                onChange={(e) => handleSliderChange(tag.id, parseInt(e.target.value))}
+                onMouseDown={blurFocusedInput}
+                onTouchStart={blurFocusedInput}
                 className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
               <span className="text-lg font-semibold text-gray-900 dark:text-white min-w-[60px] text-right">
