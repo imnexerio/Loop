@@ -71,9 +71,9 @@ const Dashboard = () => {
         <div className="mb-6">
           {activeTab === 'analysis' && (
             <AnalysisTab 
-              key={refreshKey}
               tags={tags} 
               onAddSession={() => setShowAddSession(true)}
+              refreshTrigger={refreshKey}
             />
           )}
           {activeTab === 'chat' && <ChatTab />}

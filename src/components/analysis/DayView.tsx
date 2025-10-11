@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getDayLog } from '../../services/firestore'
 import { DayLog, Tag } from '../../types'
@@ -8,20 +8,28 @@ interface DayViewProps {
   tags: Tag[]
   onBack: () => void
   onAddSession: () => void
+  refreshTrigger?: number
 }
 
-const DayView = ({ date, tags, onBack, onAddSession }: DayViewProps) => {
+const DayView = ({ date, tags, onBack, onAddSession, refreshTrigger }: DayViewProps) => {
   const { currentUser } = useAuth()
   const [dayLog, setDayLog] = useState<DayLog | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Debug: Log when component renders
+  useEffect(() => {
+    console.log('📋 DayView rendered', { date, refreshTrigger, loading })
+  })
+
   useEffect(() => {
     if (!currentUser) return
 
+    console.log('🔍 DayView loading data for:', date)
     const loadDayLog = async () => {
       setLoading(true)
       try {
         const log = await getDayLog(currentUser.uid, date)
+        console.log('✅ DayView data loaded:', log)
         setDayLog(log)
       } catch (error) {
         console.error('Error loading day log:', error)
@@ -31,9 +39,9 @@ const DayView = ({ date, tags, onBack, onAddSession }: DayViewProps) => {
     }
 
     loadDayLog()
-  }, [currentUser, date])
+  }, [currentUser, date, refreshTrigger])
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = useCallback((dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00')
     return d.toLocaleDateString('en-US', { 
       weekday: 'long', 
@@ -41,22 +49,22 @@ const DayView = ({ date, tags, onBack, onAddSession }: DayViewProps) => {
       month: 'long', 
       day: 'numeric' 
     })
-  }
+  }, [])
 
-  const formatTime = (timestamp: string) => {
+  const formatTime = useCallback((timestamp: string) => {
     const d = new Date(timestamp)
     return d.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true
     })
-  }
+  }, [])
 
-  const getTagById = (tagId: string) => {
+  const getTagById = useCallback((tagId: string) => {
     return tags.find(t => t.id === tagId)
-  }
+  }, [tags])
 
-  const renderTagValue = (tag: Tag, value: any) => {
+  const renderTagValue = useCallback((tag: Tag, value: any) => {
     switch (tag.type) {
       case 'number':
         return `${value}${tag.config.unit ? ' ' + tag.config.unit : ''}`
@@ -71,12 +79,13 @@ const DayView = ({ date, tags, onBack, onAddSession }: DayViewProps) => {
       default:
         return value
     }
-  }
+  }, [])
 
-  const isToday = () => {
+  // Memoize isToday check to avoid recalculating on every render
+  const isToday = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]
     return date === today
-  }
+  }, [date])
 
   if (loading) {
     return (
@@ -87,27 +96,16 @@ const DayView = ({ date, tags, onBack, onAddSession }: DayViewProps) => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl mx-auto">
       {/* Header */}
       <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            aria-label="Back to calendar"
-          >
-            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              {formatDate(date)}
-            </h2>
-            {isToday() && (
-              <span className="text-sm text-primary-600 dark:text-primary-400 font-medium">Today</span>
-            )}
-          </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+            {formatDate(date)}
+          </h2>
+          {isToday && (
+            <span className="text-sm text-primary-600 dark:text-primary-400 font-medium">Today</span>
+          )}
         </div>
       </div>
 
@@ -121,9 +119,9 @@ const DayView = ({ date, tags, onBack, onAddSession }: DayViewProps) => {
               </svg>
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {isToday() ? 'No sessions logged yet today' : 'No sessions on this day'}
+              {isToday ? 'No sessions logged yet today' : 'No sessions on this day'}
             </p>
-            {isToday() && (
+            {isToday && (
               <button
                 onClick={onAddSession}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl transition-colors"
@@ -184,7 +182,7 @@ const DayView = ({ date, tags, onBack, onAddSession }: DayViewProps) => {
             ))}
 
             {/* Add Session Button for Today */}
-            {isToday() && (
+            {isToday && (
               <button
                 onClick={onAddSession}
                 className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 rounded-xl text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 font-medium transition-colors flex items-center justify-center gap-2"

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Calendar from './analysis/Calendar'
 import DayView from './analysis/DayView'
 import { Tag } from '../types'
@@ -6,41 +6,45 @@ import { Tag } from '../types'
 interface AnalysisTabProps {
   tags: Tag[]
   onAddSession: () => void
+  refreshTrigger?: number
 }
 
-const AnalysisTab = ({ tags, onAddSession }: AnalysisTabProps) => {
+const AnalysisTab = ({ tags, onAddSession, refreshTrigger }: AnalysisTabProps) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Debug: Log when component renders
+  useEffect(() => {
+    console.log('🔄 AnalysisTab rendered', { selectedDate, refreshTrigger })
+  })
 
   const handleDateSelect = (date: string) => {
+    console.log('📅 Date selected in AnalysisTab:', date)
+    // If clicking the same date, keep it selected (don't toggle)
     setSelectedDate(date)
   }
 
-  const handleBack = () => {
-    setSelectedDate(null)
-    setRefreshKey(prev => prev + 1) // Refresh calendar to show new session indicator
-  }
-
-  const handleSessionAdded = () => {
-    setRefreshKey(prev => prev + 1) // Refresh view
-  }
-
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Calendar - Always Visible */}
+      <Calendar
+        onDateSelect={handleDateSelect}
+        selectedDate={selectedDate}
+        refreshTrigger={refreshTrigger}
+      />
+
+      {/* Day View - Shows below calendar when date is selected */}
       {selectedDate ? (
         <DayView
-          key={`${selectedDate}-${refreshKey}`}
           date={selectedDate}
           tags={tags}
-          onBack={handleBack}
+          onBack={() => setSelectedDate(null)}
           onAddSession={onAddSession}
+          refreshTrigger={refreshTrigger}
         />
       ) : (
-        <Calendar
-          key={refreshKey}
-          onDateSelect={handleDateSelect}
-          selectedDate={selectedDate}
-        />
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          Select a date to view details
+        </div>
       )}
     </div>
   )
