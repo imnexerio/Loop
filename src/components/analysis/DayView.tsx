@@ -11,7 +11,7 @@ interface DayViewProps {
   refreshTrigger?: number
 }
 
-const DayView = ({ date, tags, onBack, onAddSession, refreshTrigger }: DayViewProps) => {
+const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => {
   const { currentUser } = useAuth()
   const [dayLog, setDayLog] = useState<DayLog | null>(null)
   const [loading, setLoading] = useState(true)

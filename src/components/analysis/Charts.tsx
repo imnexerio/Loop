@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, memo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getChartDataCached } from '../../services/dataManager'
 import { Tag } from '../../types'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface ChartsProps {
   tags: Tag[]

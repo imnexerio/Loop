@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Tag, TagType } from '../types'
-import { createTagCached, deleteTagCached, clearCache } from '../services/dataManager'
+import { createTagCached, deleteTagCached } from '../services/dataManager'
 
 interface ProfileTabProps {
   tags: Tag[]

@@ -6,8 +6,7 @@ import {
   updateDoc, 
   deleteDoc,
   query,
-  getDocs,
-  Timestamp 
+  getDocs
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { Tag, DayLog, Session, UserProfile } from '../types'
