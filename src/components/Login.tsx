@@ -8,8 +8,11 @@ const Login = () => {
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetSuccess, setResetSuccess] = useState(false)
 
-  const { signup, login, loginWithGoogle } = useAuth()
+  const { signup, login, loginWithGoogle, resetPassword } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,6 +70,35 @@ const Login = () => {
         setError('Popup blocked. Please allow popups for this site.')
       } else {
         setError(err.message || 'Google sign-in failed. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    setResetSuccess(false)
+
+    try {
+      await resetPassword(resetEmail)
+      setResetSuccess(true)
+      setTimeout(() => {
+        setShowForgotPassword(false)
+        setResetSuccess(false)
+        setResetEmail('')
+      }, 3000)
+    } catch (err: any) {
+      console.error('Password reset error:', err)
+      
+      if (err.code === 'auth/user-not-found') {
+        setError('No account found with this email.')
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address.')
+      } else {
+        setError(err.message || 'Failed to send reset email. Please try again.')
       }
     } finally {
       setLoading(false)
@@ -180,9 +212,17 @@ const Login = () => {
                   />
                   <span className="ml-2 text-gray-600 dark:text-gray-400">Remember me</span>
                 </label>
-                <a href="#" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(true)
+                    setError('')
+                    setResetSuccess(false)
+                  }}
+                  className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+                >
                   Forgot password?
-                </a>
+                </button>
               </div>
             )}
 
@@ -255,6 +295,108 @@ const Login = () => {
           </button>
         </p>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                Reset Password
+              </h2>
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false)
+                  setError('')
+                  setResetSuccess(false)
+                  setResetEmail('')
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {resetSuccess ? (
+              <div className="text-center py-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/20 mb-4">
+                  <svg className="w-8 h-8 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Check your email!
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  We've sent a password reset link to <strong>{resetEmail}</strong>
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                  Enter your email address and we'll send you a link to reset your password.
+                </p>
+
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{error}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div>
+                    <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      id="reset-email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="w-full px-4 py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200"
+                      placeholder="your@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPassword(false)
+                        setError('')
+                        setResetEmail('')
+                      }}
+                      className="flex-1 px-4 py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-3 text-sm sm:text-base rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    >
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Sending...
+                        </span>
+                      ) : (
+                        'Send Reset Link'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

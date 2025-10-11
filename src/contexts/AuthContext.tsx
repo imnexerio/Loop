@@ -7,7 +7,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth'
 import { auth } from '../firebase/config'
 
@@ -18,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   loginWithGoogle: () => Promise<void>
+  resetPassword: (email: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -65,6 +67,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await signInWithPopup(auth, provider)
   }
 
+  // Reset password
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email)
+  }
+
   // Listen to auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -81,7 +88,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signup,
     login,
     logout,
-    loginWithGoogle
+    loginWithGoogle,
+    resetPassword
   }
 
   return (
