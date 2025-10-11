@@ -16,6 +16,7 @@ const Dashboard = () => {
   const [tags, setTags] = useState<Tag[]>([])
   const [showAddSession, setShowAddSession] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showChatSidebar, setShowChatSidebar] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
   // Load user tags
@@ -64,8 +65,22 @@ const Dashboard = () => {
     <div className="min-h-screen">
       {/* Top Header Bar */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-50 flex items-center justify-between px-4 sm:px-6">
+        {/* Left Side - Hamburger menu for chat tab on mobile */}
+        <div className="flex-1">
+          {activeTab === 'chat' && (
+            <button
+              onClick={() => setShowChatSidebar(prev => !prev)}
+              className="lg:hidden w-10 h-10 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center justify-center transition-colors"
+              aria-label="Menu"
+            >
+              <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          )}
+        </div>
+        
         {/* App Name/Logo */}
-        <div className="flex-1" />
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Loop
         </h1>
@@ -100,7 +115,13 @@ const Dashboard = () => {
             refreshTrigger={refreshKey}
           />
         )}
-        {activeTab === 'chat' && <ChatTab tags={tags} />}
+        {activeTab === 'chat' && (
+          <ChatTab 
+            tags={tags} 
+            showSidebar={showChatSidebar}
+            onCloseSidebar={() => setShowChatSidebar(false)}
+          />
+        )}
       </div>
 
       {/* Bottom Navigation */}

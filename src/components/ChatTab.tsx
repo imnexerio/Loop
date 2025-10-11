@@ -7,6 +7,8 @@ import ReactMarkdown from 'react-markdown'
 
 interface ChatTabProps {
   tags: Tag[]
+  showSidebar?: boolean
+  onCloseSidebar?: () => void
 }
 
 interface Chat {
@@ -17,15 +19,26 @@ interface Chat {
   lastMessageAt: number
 }
 
-const ChatTab = ({ tags }: ChatTabProps) => {
+const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: ChatTabProps) => {
   const { currentUser } = useAuth()
   const [chats, setChats] = useState<Chat[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [recentLogs, setRecentLogs] = useState<DayLog[]>([])
-  const [showSidebar, setShowSidebar] = useState(false)
+  const [internalShowSidebar, setInternalShowSidebar] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Use external control if provided, otherwise use internal state
+  const showSidebar = externalShowSidebar !== undefined ? externalShowSidebar : internalShowSidebar
+  const setShowSidebar = (value: boolean | ((prev: boolean) => boolean)) => {
+    const newValue = typeof value === 'function' ? value(showSidebar) : value
+    if (onCloseSidebar && !newValue) {
+      onCloseSidebar()
+    } else if (!onCloseSidebar) {
+      setInternalShowSidebar(newValue)
+    }
+  }
 
   const currentChat = chats.find(c => c.id === currentChatId)
   const messages = currentChat?.messages || []
@@ -298,31 +311,44 @@ const ChatTab = ({ tags }: ChatTabProps) => {
               }}
               className={`w-full text-left p-3 rounded-lg mb-2 transition-colors group ${
                 chat.id === currentChatId
-                  ? 'bg-primary-100 dark:bg-primary-900/30 border border-primary-300 dark:border-primary-700'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-primary-50 dark:bg-gray-700 border-l-4 border-primary-600 shadow-sm'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700/50'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  <p className={`text-sm font-medium truncate ${
+                    chat.id === currentChatId 
+                      ? 'text-primary-700 dark:text-primary-400' 
+                      : 'text-gray-900 dark:text-white'
+                  }`}>
                     {chat.title}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {formatTimestamp(chat.lastMessageAt)} • {chat.messages.length - 1} msgs
                   </p>
                 </div>
-                <button
+                <div
                   onClick={(e) => {
                     e.stopPropagation()
                     deleteChat(chat.id)
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-opacity cursor-pointer"
                   title="Delete chat"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      deleteChat(chat.id)
+                    }
+                  }}
                 >
                   <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                </button>
+                </div>
               </div>
             </button>
           ))}
@@ -331,38 +357,7 @@ const ChatTab = ({ tags }: ChatTabProps) => {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800 shadow-sm">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowSidebar(true)}
-              className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                {currentChat?.title || 'AI Assistant'}
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Powered by Gemini • Chat history saved locally
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={createNewChat}
-            className="hidden lg:block p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-            title="New chat"
-          >
-            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Messages */}
+        {/* Messages - No header, full space */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-4 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-5xl mx-auto">
           {messages.map((message, index) => (
