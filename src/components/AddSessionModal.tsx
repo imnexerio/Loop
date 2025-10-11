@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addSessionCached } from '../services/dataManager'
 import { uploadSessionImage, validateImageFile } from '../services/imageService'
@@ -18,6 +18,7 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
   const [saving, setSaving] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -181,6 +182,11 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
       setTagValues({})
       setSelectedImage(null)
       setImagePreview('')
+      
+      // Focus textarea only once when modal opens (not on every re-render)
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 100) // Small delay to ensure modal is fully rendered
     }
   }, [isOpen])
 
@@ -193,6 +199,15 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
       ...prev,
       [tagId]: value
     }))
+  }
+  
+  // Prevent keyboard from popping up when interacting with sliders
+  const handleSliderInteraction = (tagId: string, value: any) => {
+    // Blur any focused input to prevent keyboard popup
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    handleTagChange(tagId, value)
   }
 
   const renderTagInput = (tag: Tag) => {
@@ -211,7 +226,13 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
                 min={tag.config.min || 0}
                 max={tag.config.max || 100}
                 value={value || tag.config.min || 0}
-                onChange={(e) => handleTagChange(tag.id, parseInt(e.target.value))}
+                onChange={(e) => handleSliderInteraction(tag.id, parseInt(e.target.value))}
+                onTouchStart={() => {
+                  // On mobile, blur any focused input when touching slider
+                  if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur()
+                  }
+                }}
                 className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
               <span className="text-lg font-semibold text-gray-900 dark:text-white min-w-[60px] text-right">
@@ -342,12 +363,12 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
               What are you doing? *
             </label>
             <textarea
+              ref={textareaRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
               placeholder="I am working on..."
-              autoFocus
             />
           </div>
 
