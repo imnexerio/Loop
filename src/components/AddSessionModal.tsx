@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addSessionCached } from '../services/dataManager'
+import { uploadSessionImage, validateImageFile } from '../services/imageService'
 import { Tag } from '../types'
 
 interface AddSessionModalProps {
@@ -15,6 +16,8 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
   const [description, setDescription] = useState('')
   const [tagValues, setTagValues] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>('')
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -24,13 +27,24 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
 
     setSaving(true)
     try {
-      // Session without timestamp - service will add it
+      // Generate timestamp ONCE for both session and image
+      const timestamp = Date.now()
+      
+      // Create session with explicit timestamp
       const session = {
+        timestamp: timestamp.toString(),
         description: description.trim(),
         tags: tagValues
       }
 
+      // Save session first
       await addSessionCached(currentUser.uid, today, session)
+      
+      // Upload image with SAME timestamp if selected
+      if (selectedImage) {
+        await uploadSessionImage(currentUser.uid, today, timestamp, selectedImage)
+      }
+      
       onSessionAdded()
       onClose()
     } catch (error) {
@@ -41,11 +55,38 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
     }
   }
 
+  // Handle image selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Validate
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      alert(validation.error)
+      return
+    }
+    
+    // Set file and show preview
+    setSelectedImage(file)
+    const reader = new FileReader()
+    reader.onload = () => setImagePreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  // Remove selected image
+  const handleRemoveImage = () => {
+    setSelectedImage(null)
+    setImagePreview('')
+  }
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setDescription('')
       setTagValues({})
+      setSelectedImage(null)
+      setImagePreview('')
     }
   }, [isOpen])
 
@@ -236,6 +277,55 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
               </p>
             </div>
           )}
+
+          {/* Image Upload */}
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Add Photo (optional)
+            </label>
+            
+            {!imagePreview ? (
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <svg className="w-8 h-8 mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Click to upload image
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    JPG, PNG, WEBP or GIF (max 10 MB)
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+              </label>
+            ) : (
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-48 object-cover rounded-xl"
+                />
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                  type="button"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {selectedImage?.name} ({(selectedImage!.size / 1024).toFixed(1)} KB)
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

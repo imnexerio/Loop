@@ -211,15 +211,25 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog | 
 export async function addSession(
   userId: string,
   date: string,
-  session: Omit<Session, 'timestamp'>
+  session: Omit<Session, 'timestamp'> | Session
 ): Promise<number> {
   try {
-    const timestamp = Date.now()
+    // Use provided timestamp or generate new one
+    const timestamp = 'timestamp' in session 
+      ? parseInt(session.timestamp) 
+      : Date.now()
+    
     const sessionRef = ref(database, `users/${userId}/sessions/${date}/sessions/${timestamp}`)
     
     const firebaseSession: FirebaseSession = {
       description: session.description,
-      tags: session.tags
+      tags: session.tags,
+      imageId: 'imageId' in session ? session.imageId : undefined
+    }
+    
+    // Remove undefined values
+    if (!firebaseSession.imageId) {
+      delete firebaseSession.imageId
     }
     
     await set(sessionRef, firebaseSession)
