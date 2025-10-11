@@ -42,7 +42,7 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
           // Specific error handling for image upload
           console.error('[AddSessionModal] Image upload failed:', imageError)
           
-          let errorMessage = 'Failed to upload image: '
+          let errorMessage = 'Image Upload Failed\n\n'
           if (imageError instanceof Error) {
             const errMsg = imageError.message.toLowerCase()
             
@@ -63,8 +63,21 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
             errorMessage += 'Unknown error occurred during image processing.'
           }
           
-          alert(errorMessage + '\n\nThe session will be saved without the image.')
-          // Continue to save session without image
+          // ASK USER: Do they want to save without image?
+          const userChoice = window.confirm(
+            errorMessage + 
+            '\n\nDo you want to save the session WITHOUT the image?\n\n' +
+            '• Click OK to save without image\n' +
+            '• Click Cancel to go back and fix the issue'
+          )
+          
+          if (!userChoice) {
+            // User chose to cancel - keep all data and stop saving
+            setSaving(false)
+            return
+          }
+          
+          // User chose to continue without image
           imageId = undefined
         }
       }
@@ -88,12 +101,12 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
       } catch (sessionError) {
         console.error('[AddSessionModal] Session save failed:', sessionError)
         
-        let errorMessage = 'Failed to save session: '
+        let errorMessage = 'Failed to Save Session\n\n'
         if (sessionError instanceof Error) {
           const errMsg = sessionError.message.toLowerCase()
           
           if (errMsg.includes('network') || errMsg.includes('connection')) {
-            errorMessage += 'Network error. Please check your internet connection and try again.'
+            errorMessage += 'Network error. Please check your internet connection.'
           } else if (errMsg.includes('permission')) {
             errorMessage += 'Permission denied. Please check your Firebase permissions.'
           } else if (errMsg.includes('quota') || errMsg.includes('limit')) {
@@ -105,8 +118,24 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
           errorMessage += 'Unknown database error occurred.'
         }
         
-        alert(errorMessage)
-        throw sessionError // Re-throw to prevent closing modal
+        // ASK USER: Do they want to retry?
+        const userChoice = window.confirm(
+          errorMessage + 
+          '\n\nYour data is still here. What would you like to do?\n\n' +
+          '• Click OK to try saving again\n' +
+          '• Click Cancel to go back and edit'
+        )
+        
+        if (userChoice) {
+          // User wants to retry - recursively call saveSession
+          setSaving(false)
+          await saveSession()
+          return
+        } else {
+          // User wants to go back - stop and keep data
+          setSaving(false)
+          return
+        }
       }
       
       // Success!
@@ -114,9 +143,8 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
       onClose()
       
     } catch (error) {
-      console.error('[AddSessionModal] Fatal error:', error)
-      // Error already handled above with specific messages
-    } finally {
+      console.error('[AddSessionModal] Unexpected error:', error)
+      alert('An unexpected error occurred. Your data is still here - please try again.')
       setSaving(false)
     }
   }
