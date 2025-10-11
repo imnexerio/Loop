@@ -187,7 +187,8 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog | 
     const sessions: Session[] = Object.entries(sessionsObj).map(([timestamp, session]) => ({
       timestamp: timestamp,
       description: (session as FirebaseSession).description,
-      tags: (session as FirebaseSession).tags
+      tags: (session as FirebaseSession).tags,
+      imageId: (session as FirebaseSession).imageId
     }))
     
     // Sort by timestamp (newest first)
@@ -196,7 +197,7 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog | 
     return {
       date: data.date,
       sessions,
-      lastUpdated: data.lastUpdated
+      lastUpdated: data.lastUpdated?.toString() || Date.now().toString()
     }
   } catch (error) {
     console.error(`Error getting day log for ${date}:`, error)

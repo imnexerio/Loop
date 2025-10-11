@@ -45,7 +45,7 @@ const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => 
   }, [])
 
   const formatTime = useCallback((timestamp: string) => {
-    const d = new Date(timestamp)
+    const d = new Date(parseInt(timestamp))
     return d.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
