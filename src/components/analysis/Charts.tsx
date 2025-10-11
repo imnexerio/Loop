@@ -38,7 +38,7 @@ const Charts = memo(({ tags, refreshTrigger }: ChartsProps) => {
     const loadChartData = async () => {
       setLoading(true)
       try {
-        const data = await getChartDataCached(currentUser.uid, selectedTag, dateRange, refreshTrigger !== undefined)
+        const data = await getChartDataCached(currentUser.uid, selectedTag, dateRange)
         setChartData(data)
       } catch (error) {
         console.error('Error loading chart data:', error)

@@ -32,7 +32,7 @@ const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps)
       const yearStr = year.toString()
       const monthStr = (month + 1).toString().padStart(2, '0')
       
-      const days = await getMonthDaysWithSessionsCached(currentUser.uid, yearStr, monthStr, refreshTrigger !== undefined)
+      const days = await getMonthDaysWithSessionsCached(currentUser.uid, yearStr, monthStr)
       setDaysWithSessions(new Set(days))
     }
 

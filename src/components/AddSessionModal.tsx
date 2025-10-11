@@ -24,8 +24,8 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
 
     setSaving(true)
     try {
-      const session: Session = {
-        timestamp: new Date().toISOString(),
+      // Session without timestamp - service will add it
+      const session = {
         description: description.trim(),
         tags: tagValues
       }

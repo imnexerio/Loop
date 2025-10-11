@@ -22,7 +22,7 @@ const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => 
     const loadDayLog = async () => {
       setLoading(true)
       try {
-        const log = await getDayLogCached(currentUser.uid, date, refreshTrigger !== undefined)
+        const log = await getDayLogCached(currentUser.uid, date)
         setDayLog(log)
       } catch (error) {
         console.error('Error loading day log:', error)
