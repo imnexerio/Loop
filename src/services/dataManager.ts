@@ -1,6 +1,7 @@
 /**
- * Unified Data Manager
+ * Unified Data Manager with Offline Support
  * Centralizes all data operations with caching and state management
+ * Offline-first: Reads from local storage, writes to queue when offline
  * Prevents unnecessary Firestore reads and manages data flow
  */
 
@@ -13,6 +14,7 @@ import {
   getMonthDaysWithSessions,
   getTagDataRange
 } from './firestore'
+import { offlineStorage } from './offlineStorage'
 import { Tag, DayLog, Session } from '../types'
 
 // Cache structure
@@ -86,15 +88,49 @@ async function getOrFetch<T>(
 export async function getTags(userId: string, forceRefresh = false): Promise<Tag[]> {
   const cacheKey = `tags_${userId}`
   
-  // Return cached data if valid and same user
-  if (
-    !forceRefresh &&
-    cache.tags.userId === userId &&
-    cache.tags.data &&
-    isCacheValid(cache.tags.lastFetch, CACHE_DURATION.TAGS)
-  ) {
-    console.log('[DataManager] Returning cached tags')
-    return cache.tags.data
+  // Try local storage first (offline-first)
+  if (!forceRefresh) {
+    // Check memory cache
+    if (
+      cache.tags.userId === userId &&
+      cache.tags.data &&
+      isCacheValid(cache.tags.lastFetch, CACHE_DURATION.TAGS)
+    ) {
+      console.log('[DataManager] Returning cached tags from memory')
+      return cache.tags.data
+    }
+    
+    // Check IndexedDB
+    try {
+      const localTags = await offlineStorage.getTags(userId)
+      if (localTags) {
+        console.log('[DataManager] Returning tags from IndexedDB')
+        // Update memory cache
+        cache.tags = {
+          data: localTags,
+          lastFetch: Date.now(),
+          userId
+        }
+        
+        // Fetch from Firestore in background if online
+        if (navigator.onLine) {
+          getUserTags(userId).then(tags => {
+            offlineStorage.saveTags(userId, tags)
+            cache.tags = { data: tags, lastFetch: Date.now(), userId }
+          }).catch(err => console.error('Background tag fetch failed:', err))
+        }
+        
+        return localTags
+      }
+    } catch (error) {
+      console.error('Error reading from IndexedDB:', error)
+    }
+  }
+
+  // If online, fetch from Firestore
+  if (!navigator.onLine) {
+    console.warn('[DataManager] Offline and no cached tags available')
+    return []
   }
 
   console.log('[DataManager] Fetching tags from Firestore')
@@ -102,7 +138,12 @@ export async function getTags(userId: string, forceRefresh = false): Promise<Tag
   return getOrFetch(cacheKey, async () => {
     const tags = await getUserTags(userId)
     
-    // Update cache
+    // Save to IndexedDB
+    offlineStorage.saveTags(userId, tags).catch(err => 
+      console.error('Failed to save tags to IndexedDB:', err)
+    )
+    
+    // Update memory cache
     cache.tags = {
       data: tags,
       lastFetch: Date.now(),
@@ -115,6 +156,23 @@ export async function getTags(userId: string, forceRefresh = false): Promise<Tag
 
 export async function createTagCached(userId: string, tag: Omit<Tag, 'id'>): Promise<string> {
   console.log('[DataManager] Creating new tag')
+  
+  if (!navigator.onLine) {
+    // Queue for later when offline
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    await offlineStorage.addToQueue({
+      userId,
+      type: 'CREATE_TAG',
+      data: { tag: { ...tag, id: tempId } }
+    })
+    
+    // Update local cache optimistically
+    const currentTags = cache.tags.data || []
+    cache.tags.data = [...currentTags, { ...tag, id: tempId } as Tag]
+    
+    return tempId
+  }
+  
   const tagId = await createTag(userId, tag)
   
   // Invalidate cache to force refresh
@@ -125,6 +183,23 @@ export async function createTagCached(userId: string, tag: Omit<Tag, 'id'>): Pro
 
 export async function deleteTagCached(userId: string, tagId: string): Promise<void> {
   console.log('[DataManager] Deleting tag')
+  
+  if (!navigator.onLine) {
+    // Queue for later
+    await offlineStorage.addToQueue({
+      userId,
+      type: 'DELETE_TAG',
+      data: { tagId }
+    })
+    
+    // Update local cache optimistically
+    if (cache.tags.data) {
+      cache.tags.data = cache.tags.data.filter(t => t.id !== tagId)
+    }
+    
+    return
+  }
+  
   await deleteTag(userId, tagId)
   
   // Invalidate cache
@@ -143,22 +218,61 @@ export async function getDayLogCached(
   const cacheKey = `daylog_${userId}_${date}`
   const cached = cache.dayLogs.get(cacheKey)
   
-  // Return cached data if valid
-  if (
-    !forceRefresh &&
-    cached &&
-    isCacheValid(cached.lastFetch, CACHE_DURATION.DAY_LOG)
-  ) {
-    console.log(`[DataManager] Returning cached day log for ${date}`)
-    return cached.data
+  // Try local storage first (offline-first)
+  if (!forceRefresh) {
+    // Check memory cache
+    if (cached && isCacheValid(cached.lastFetch, CACHE_DURATION.DAY_LOG)) {
+      console.log(`[DataManager] Returning cached day log for ${date} from memory`)
+      return cached.data
+    }
+    
+    // Check IndexedDB
+    try {
+      const localDayLog = await offlineStorage.getDayLog(userId, date)
+      if (localDayLog) {
+        console.log(`[DataManager] Returning day log for ${date} from IndexedDB`)
+        // Update memory cache
+        cache.dayLogs.set(cacheKey, {
+          data: localDayLog,
+          lastFetch: Date.now()
+        })
+        
+        // Fetch from Firestore in background if online
+        if (navigator.onLine) {
+          getDayLog(userId, date).then(dayLog => {
+            if (dayLog) {
+              offlineStorage.saveDayLog(userId, date, dayLog)
+              cache.dayLogs.set(cacheKey, { data: dayLog, lastFetch: Date.now() })
+            }
+          }).catch(err => console.error('Background day log fetch failed:', err))
+        }
+        
+        return localDayLog
+      }
+    } catch (error) {
+      console.error('Error reading from IndexedDB:', error)
+    }
   }
 
-  console.log(`[DataManager] Fetching day log for ${date}`)
+  // If online, fetch from Firestore
+  if (!navigator.onLine) {
+    console.warn(`[DataManager] Offline and no cached day log for ${date}`)
+    return null
+  }
+
+  console.log(`[DataManager] Fetching day log for ${date} from Firestore`)
   
   return getOrFetch(cacheKey, async () => {
     const dayLog = await getDayLog(userId, date)
     
-    // Update cache
+    // Save to IndexedDB
+    if (dayLog) {
+      offlineStorage.saveDayLog(userId, date, dayLog).catch(err =>
+        console.error('Failed to save day log to IndexedDB:', err)
+      )
+    }
+    
+    // Update memory cache
     cache.dayLogs.set(cacheKey, {
       data: dayLog,
       lastFetch: Date.now()
@@ -174,6 +288,33 @@ export async function addSessionCached(
   session: Session
 ): Promise<void> {
   console.log(`[DataManager] Adding session for ${date}`)
+  
+  if (!navigator.onLine) {
+    // Queue for later when offline
+    await offlineStorage.addToQueue({
+      userId,
+      type: 'ADD_SESSION',
+      data: { date, session }
+    })
+    
+    // Update local storage optimistically
+    let dayLog = await offlineStorage.getDayLog(userId, date)
+    if (!dayLog) {
+      dayLog = { date, sessions: [] }
+    }
+    dayLog.sessions.push(session)
+    await offlineStorage.saveDayLog(userId, date, dayLog)
+    
+    // Update memory cache
+    const dayLogKey = `daylog_${userId}_${date}`
+    cache.dayLogs.set(dayLogKey, {
+      data: dayLog,
+      lastFetch: Date.now()
+    })
+    
+    return
+  }
+  
   await addSession(userId, date, session)
   
   // Invalidate related caches

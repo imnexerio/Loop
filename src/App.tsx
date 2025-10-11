@@ -2,11 +2,20 @@ import { useEffect, useState } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
+import OfflineIndicator from './components/OfflineIndicator'
 import { useAuth } from './contexts/AuthContext'
+import { offlineStorage } from './services/offlineStorage'
 
 function AppContent() {
   const { currentUser } = useAuth()
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  // Initialize offline storage
+  useEffect(() => {
+    offlineStorage.init().catch(err => {
+      console.error('Failed to initialize offline storage:', err)
+    })
+  }, [])
 
   // Auto-detect system theme preference
   useEffect(() => {
@@ -32,6 +41,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
+      <OfflineIndicator />
       {currentUser ? <Dashboard /> : <Login />}
     </div>
   )

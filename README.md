@@ -46,7 +46,19 @@ Each tag can have:
 - Markdown-formatted responses with lists and formatting
 - Suggested questions for quick insights
 
-### 👤 **Profile Management**
+### � **Offline Support** ⭐ NEW!
+- **Full Offline Functionality** - Works without internet connection
+- **IndexedDB Storage** - All data persists locally across app restarts
+- **Offline Queue** - Write operations queued when offline
+- **Automatic Sync** - Syncs to Firebase when connection returns
+- **Visual Indicators** - Clear offline/syncing/synced status banners
+- **Optimistic Updates** - Instant UI feedback, sync happens in background
+- **Queue Management** - Automatic retry logic with up to 10 attempts
+- **Data Persistence** - Close and reopen app offline, data remains
+
+See [OFFLINE_GUIDE.md](./OFFLINE_GUIDE.md) for complete documentation.
+
+### �👤 **Profile Management**
 - User information display
 - Tag creation and management
 - Tag deletion (with confirmation)
@@ -244,18 +256,27 @@ Loop/
 1. User creates **tags** in Profile (e.g., "Mood", "Energy")
 2. User clicks **FAB** to add a session
 3. Modal opens with description textarea and tag inputs
-4. Session **auto-saves** after 2 seconds of no typing
+4. User fills out form and clicks **Save Session**
 5. Data saved to Firestore: `/users/{uid}/logs/{year}/months/{month}/days/{day}`
-6. Calendar updates with session indicator
-7. Click date to view all sessions for that day
+6. If offline, queued in IndexedDB and synced when connection returns
+7. Calendar updates with session indicator
+8. Click date to view all sessions for that day
 
 ## 🌐 **PWA Features**
 
 - ✅ Installable on mobile and desktop
-- ✅ Offline support (service worker)
+- ✅ **Full offline support** with IndexedDB
+- ✅ **Background sync** when connection returns
 - ✅ Fast loading with caching
 - ✅ App-like experience
 - ✅ Auto-updates
+
+## 📚 **Documentation**
+
+- **[OFFLINE_GUIDE.md](./OFFLINE_GUIDE.md)** - Complete offline functionality guide
+- **[OFFLINE_IMPLEMENTATION.md](./OFFLINE_IMPLEMENTATION.md)** - Implementation summary
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture and data flow diagrams
+- **[CHAT_SETUP.md](./CHAT_SETUP.md)** - AI chat setup instructions
 
 ## ❓ FAQ: Where do I get the .env values? Is it free?
 
