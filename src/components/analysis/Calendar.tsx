@@ -13,16 +13,16 @@ const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [daysWithSessions, setDaysWithSessions] = useState<Set<string>>(new Set())
 
-  // Debug: Log when component renders
-  useEffect(() => {
-    console.log('📆 Calendar rendered', { selectedDate, refreshTrigger })
-  })
-
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   
-  // Memoize today's date to avoid recreating on every render
-  const today = useMemo(() => new Date(), [])
+  // Get today's date for comparison
+  const today = useMemo(() => {
+    const now = new Date()
+    // Reset time to midnight for accurate date comparison
+    now.setHours(0, 0, 0, 0)
+    return now
+  }, []) // Only calculate once per component mount
 
   // Load days with sessions for current month
   useEffect(() => {
@@ -86,7 +86,6 @@ const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps)
     if (day < 0) return // Don't allow clicking prev/next month days
     
     const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
-    console.log('🖱️ Date clicked in Calendar:', dateStr)
     onDateSelect(dateStr)
   }
 
@@ -167,15 +166,11 @@ const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps)
                 transition-all duration-200
                 ${isOtherMonth 
                   ? 'text-gray-300 dark:text-gray-700 cursor-not-allowed' 
-                  : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                }
-                ${isToday(day as number) && !isSelected(day as number)
-                  ? 'bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-500'
-                  : ''
-                }
-                ${isSelected(day as number)
-                  ? 'bg-primary-600 text-white hover:bg-primary-700'
-                  : ''
+                  : isToday(day as number) && !isSelected(day as number)
+                    ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border-2 border-primary-500 font-bold'
+                    : isSelected(day as number)
+                      ? 'bg-primary-600 text-white hover:bg-primary-700'
+                      : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                 }
               `}
             >
