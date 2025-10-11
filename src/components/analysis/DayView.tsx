@@ -149,7 +149,7 @@ const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => 
                 </p>
 
                 {/* Tags */}
-                {Object.keys(session.tags).length > 0 && (
+                {session.tags && Object.keys(session.tags).length > 0 && (
                   <div className="flex flex-wrap gap-3">
                     {Object.entries(session.tags).map(([tagId, value]) => {
                       const tag = getTagById(tagId)
