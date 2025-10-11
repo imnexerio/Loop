@@ -509,12 +509,24 @@ export async function updateUserProfile(
     const profileRef = ref(database, `users/${userId}/profile`)
     const snapshot = await get(profileRef)
     
-    if (!snapshot.exists()) {
-      throw new Error('Profile does not exist')
-    }
+    let updatedProfile: UserProfile
     
-    const currentProfile = snapshot.val()
-    const updatedProfile = { ...currentProfile, ...updates }
+    if (!snapshot.exists()) {
+      // Create profile if it doesn't exist
+      updatedProfile = {
+        name: updates.name || '',
+        email: updates.email || '',
+        createdAt: new Date().toISOString(),
+        settings: updates.settings || {
+          llmProvider: 'gemini'
+        },
+        ...updates
+      }
+    } else {
+      // Update existing profile
+      const currentProfile = snapshot.val()
+      updatedProfile = { ...currentProfile, ...updates }
+    }
     
     await set(profileRef, updatedProfile)
   } catch (error) {
@@ -557,7 +569,6 @@ export async function saveImage(
     }
     
     await set(imageRef, image)
-    console.log(`[FirebaseService] Image saved: ${imageId}`)
     
     return imageId
   } catch (error) {
@@ -599,7 +610,6 @@ export async function deleteImage(
   try {
     const imageRef = ref(database, `users/${userId}/images/${imageId}`)
     await remove(imageRef)
-    console.log(`[FirebaseService] Image deleted: ${imageId}`)
   } catch (error) {
     console.error('Error deleting image:', error)
     throw error

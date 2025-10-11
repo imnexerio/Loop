@@ -1,16 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Tag, TagType } from '../types'
-import { createTagCached, deleteTagCached } from '../services/dataManager'
+import { createTagCached, deleteTagCached, getUserProfile, updateUserProfile, getImage } from '../services/dataManager'
+import { uploadProfilePicture } from '../services/imageService'
 
 interface ProfileTabProps {
   tags: Tag[]
   onTagsChange: () => void
+  onProfileUpdate?: () => void
 }
 
-const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
+const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) => {
   const { currentUser, logout } = useAuth()
   const [showAddTag, setShowAddTag] = useState(false)
+  const [profilePicture, setProfilePicture] = useState<string | null>(null)
+  const [uploadingPicture, setUploadingPicture] = useState(false)
   const [newTag, setNewTag] = useState({
     name: '',
     type: 'number' as TagType,
@@ -18,6 +22,60 @@ const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
     max: 10,
     unit: ''
   })
+
+  // Load profile picture
+  useEffect(() => {
+    const loadProfilePicture = async () => {
+      if (!currentUser) return
+      
+      try {
+        const profile = await getUserProfile(currentUser.uid)
+        if (profile?.photoImageId) {
+          const image = await getImage(currentUser.uid, profile.photoImageId)
+          if (image) {
+            setProfilePicture(image.base64)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile picture:', error)
+      }
+    }
+
+    loadProfilePicture()
+  }, [currentUser])
+
+  const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUser) return
+
+    try {
+      setUploadingPicture(true)
+      
+      // Upload and compress image
+      const imageId = await uploadProfilePicture(currentUser.uid, file)
+      
+      // Update user profile (will create if doesn't exist)
+      await updateUserProfile(currentUser.uid, {
+        name: currentUser.displayName || '',
+        email: currentUser.email || '',
+        photoImageId: imageId
+      })
+      
+      // Load the new image
+      const image = await getImage(currentUser.uid, imageId)
+      if (image) {
+        setProfilePicture(image.base64)
+      }
+      
+      // Trigger refresh in parent component
+      onProfileUpdate?.()
+    } catch (error) {
+      console.error('Error uploading profile picture:', error)
+      alert('Failed to upload profile picture. Please try again.')
+    } finally {
+      setUploadingPicture(false)
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -102,11 +160,47 @@ const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
       {/* Profile Info */}
       <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-full mb-4">
-            <svg className="w-10 h-10 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+          <div className="relative inline-block mb-4">
+            {/* Profile Picture */}
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+              {profilePicture ? (
+                <img 
+                  src={profilePicture} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <svg className="w-10 h-10 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              )}
+            </div>
+            
+            {/* Upload button overlay */}
+            <label 
+              htmlFor="profile-picture-upload"
+              className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 hover:bg-primary-700 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-lg"
+              title="Upload profile picture"
+            >
+              {uploadingPicture ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </label>
+            <input
+              id="profile-picture-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleProfilePictureUpload}
+              disabled={uploadingPicture}
+              className="hidden"
+            />
           </div>
+          
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
             {currentUser?.displayName || 'User'}
           </h2>

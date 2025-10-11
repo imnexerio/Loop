@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getTags } from '../services/dataManager'
+import { getTags, getUserProfile, getImage } from '../services/dataManager'
 import { Tag } from '../types'
 import AnalysisTab from './AnalysisTab'
 import ChatTab from './ChatTab'
@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [showAddSession, setShowAddSession] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showChatSidebar, setShowChatSidebar] = useState(false)
+  const [profilePicture, setProfilePicture] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   // Load user tags
@@ -33,6 +34,27 @@ const Dashboard = () => {
     }
 
     loadTags()
+  }, [currentUser, refreshKey])
+
+  // Load profile picture
+  useEffect(() => {
+    const loadProfilePicture = async () => {
+      if (!currentUser) return
+      
+      try {
+        const profile = await getUserProfile(currentUser.uid)
+        if (profile?.photoImageId) {
+          const image = await getImage(currentUser.uid, profile.photoImageId)
+          if (image) {
+            setProfilePicture(image.base64)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile picture:', error)
+      }
+    }
+
+    loadProfilePicture()
   }, [currentUser, refreshKey])
 
   const handleSessionAdded = useCallback(() => {
@@ -89,12 +111,20 @@ const Dashboard = () => {
         <div className="flex-1 flex justify-end">
           <button
             onClick={() => setShowProfile(true)}
-            className="w-10 h-10 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors"
+            className="w-10 h-10 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors overflow-hidden"
             aria-label="Profile"
           >
-            <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+            {profilePicture ? (
+              <img 
+                src={profilePicture} 
+                alt="Profile" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            )}
           </button>
         </div>
       </header>
@@ -193,7 +223,11 @@ const Dashboard = () => {
                 </button>
               </div>
               <div className="p-6">
-                <ProfileTab tags={tags} onTagsChange={handleTagsChange} />
+                <ProfileTab 
+                  tags={tags} 
+                  onTagsChange={handleTagsChange}
+                  onProfileUpdate={() => setRefreshKey(prev => prev + 1)}
+                />
               </div>
             </div>
           </div>
