@@ -1,88 +1,151 @@
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getUserTags } from '../services/firestore'
+import { Tag } from '../types'
+import AnalysisTab from './AnalysisTab'
+import ChatTab from './ChatTab'
+import ProfileTab from './ProfileTab'
+import AddSessionModal from './AddSessionModal'
+
+type TabType = 'analysis' | 'chat' | 'profile'
 
 const Dashboard = () => {
-  const { currentUser, logout } = useAuth()
+  const { currentUser } = useAuth()
+  const [activeTab, setActiveTab] = useState<TabType>('analysis')
+  const [tags, setTags] = useState<Tag[]>([])
+  const [showAddSession, setShowAddSession] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
-  const handleLogout = async () => {
-    try {
-      await logout()
-    } catch (error) {
-      console.error('Logout error:', error)
+  // Load user tags
+  useEffect(() => {
+    if (!currentUser) return
+
+    const loadTags = async () => {
+      try {
+        const userTags = await getUserTags(currentUser.uid)
+        setTags(userTags)
+      } catch (error) {
+        console.error('Error loading tags:', error)
+      }
+    }
+
+    loadTags()
+  }, [currentUser, refreshKey])
+
+  const handleSessionAdded = () => {
+    setShowAddSession(false)
+    setRefreshKey(prev => prev + 1)
+  }
+
+  const handleTagsChange = () => {
+    setRefreshKey(prev => prev + 1)
+  }
+
+  const getTabIcon = (tab: TabType) => {
+    switch (tab) {
+      case 'analysis':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        )
+      case 'chat':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        )
+      case 'profile':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        )
     }
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen pb-20 p-4 sm:p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                Welcome back, {currentUser?.displayName || 'User'}! 👋
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-                {currentUser?.email}
-              </p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm sm:text-base font-medium rounded-xl transition-colors duration-200"
-            >
-              Logout
-            </button>
-          </div>
+        {/* Tab Content */}
+        <div className="mb-6">
+          {activeTab === 'analysis' && (
+            <AnalysisTab 
+              key={refreshKey}
+              tags={tags} 
+              onAddSession={() => setShowAddSession(true)}
+            />
+          )}
+          {activeTab === 'chat' && <ChatTab />}
+          {activeTab === 'profile' && (
+            <ProfileTab 
+              tags={tags}
+              onTagsChange={handleTagsChange}
+            />
+          )}
         </div>
 
-        {/* Dashboard Content */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8">
-          <div className="text-center py-8 sm:py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-primary-100 dark:bg-primary-900/30 rounded-full mb-4 sm:mb-6">
-              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Authentication Successful! 🎉
-            </h2>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6 sm:mb-8 px-4">
-              You're now logged in. Habit tracker features coming soon...
-            </p>
-            
-            {/* Placeholder for future features */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mt-8 sm:mt-12">
-              <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-2">Add Habits</h3>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Create and manage your daily habits</p>
-              </div>
+        {/* Floating Action Button (FAB) */}
+        <button
+          onClick={() => setShowAddSession(true)}
+          className="fixed right-6 bottom-24 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
+          aria-label="Add session"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
 
-              <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-2">Track Progress</h3>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">View your streaks and statistics</p>
-              </div>
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                onClick={() => setActiveTab('analysis')}
+                className={`flex flex-col items-center justify-center py-3 transition-colors ${
+                  activeTab === 'analysis'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {getTabIcon('analysis')}
+                <span className="text-xs font-medium mt-1">Analysis</span>
+              </button>
 
-              <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-2">Calendar View</h3>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">See your habits in calendar format</p>
-              </div>
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`flex flex-col items-center justify-center py-3 transition-colors ${
+                  activeTab === 'chat'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {getTabIcon('chat')}
+                <span className="text-xs font-medium mt-1">Chat</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`flex flex-col items-center justify-center py-3 transition-colors ${
+                  activeTab === 'profile'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {getTabIcon('profile')}
+                <span className="text-xs font-medium mt-1">Profile</span>
+              </button>
             </div>
           </div>
-        </div>
+        </nav>
+
+        {/* Add Session Modal */}
+        <AddSessionModal
+          isOpen={showAddSession}
+          onClose={() => setShowAddSession(false)}
+          tags={tags}
+          onSessionAdded={handleSessionAdded}
+        />
       </div>
     </div>
   )
