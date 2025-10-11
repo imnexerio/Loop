@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'Copilot_20251011_111421.png'],
       manifest: {
-        name: 'Loop - Habit Tracker',
+        name: 'Loop',
         short_name: 'Loop',
         description: 'Build better habits, one day at a time',
         theme_color: '#22c55e',
