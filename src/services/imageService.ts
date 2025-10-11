@@ -38,17 +38,28 @@ export async function compressImageToBase64(
     
     img.onload = async () => {
       try {
+        // Detect device type for adaptive compression
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        
+        console.log(`[ImageService] Original image: ${img.width}x${img.height}, Device: ${isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop'}`)
+        
         let quality = initialQuality
         let base64String = ''
         let sizeInBytes = Infinity
         let iterations = 0
-        const maxIterations = 15 // Prevent infinite loops
+        const maxIterations = 20 // Allow more iterations for difficult images
+        
+        // Adaptive starting dimensions based on device
+        // iOS Safari produces larger files, so start with smaller dimensions
+        let maxDimension = isIOS ? 1200 : isMobile ? 1400 : 1920
+        let scaleFactor = 1.0 // For progressive dimension reduction
         
         // Iteratively compress until under size limit
-        while (sizeInBytes > maxSizeBytes && quality >= 5 && iterations < maxIterations) {
+        while (sizeInBytes > maxSizeBytes && iterations < maxIterations) {
           iterations++
           
-          // Create canvas with max dimensions (optional resize)
+          // Create canvas with max dimensions
           const canvas = document.createElement('canvas')
           const ctx = canvas.getContext('2d')
           
@@ -58,20 +69,25 @@ export async function compressImageToBase64(
             return
           }
           
-          // Optional: Resize to max dimensions (similar to minWidth/minHeight in Flutter)
-          const maxDimension = 1920
-          let width = img.width
-          let height = img.height
+          // Calculate dimensions with progressive scaling
+          let width = img.width * scaleFactor
+          let height = img.height * scaleFactor
           
-          if (width > maxDimension || height > maxDimension) {
+          // Apply max dimension constraint
+          const currentMaxDim = maxDimension * scaleFactor
+          if (width > currentMaxDim || height > currentMaxDim) {
             if (width > height) {
-              height = (height / width) * maxDimension
-              width = maxDimension
+              height = (height / width) * currentMaxDim
+              width = currentMaxDim
             } else {
-              width = (width / height) * maxDimension
-              height = maxDimension
+              width = (width / height) * currentMaxDim
+              height = currentMaxDim
             }
           }
+          
+          // Ensure dimensions are at least 100px
+          width = Math.max(100, Math.floor(width))
+          height = Math.max(100, Math.floor(height))
           
           canvas.width = width
           canvas.height = height
@@ -79,34 +95,9 @@ export async function compressImageToBase64(
           // Draw image on canvas
           ctx.drawImage(img, 0, 0, width, height)
           
-          // Convert to Base64 with quality
-          // Try toBlob first (better quality), fallback to toDataURL
-          if (typeof canvas.toBlob === 'function') {
-            try {
-              base64String = await new Promise<string>((res, rej) => {
-                canvas.toBlob(
-                  (blob) => {
-                    if (!blob) {
-                      rej(new Error('Blob conversion failed'))
-                      return
-                    }
-                    const blobReader = new FileReader()
-                    blobReader.onload = () => res(blobReader.result as string)
-                    blobReader.onerror = () => rej(new Error('Failed to read blob'))
-                    blobReader.readAsDataURL(blob)
-                  },
-                  'image/jpeg',
-                  quality / 100
-                )
-              })
-            } catch (blobError) {
-              console.warn('[ImageService] toBlob failed, using toDataURL fallback:', blobError)
-              base64String = canvas.toDataURL('image/jpeg', quality / 100)
-            }
-          } else {
-            // Fallback for browsers that don't support toBlob
-            base64String = canvas.toDataURL('image/jpeg', quality / 100)
-          }
+          // Use toDataURL for consistency across devices (toBlob behaves differently on iOS)
+          // toDataURL is more predictable and reliable
+          base64String = canvas.toDataURL('image/jpeg', quality / 100)
           
           // Validate base64 string
           if (!base64String || !base64String.includes('base64,')) {
@@ -125,30 +116,59 @@ export async function compressImageToBase64(
           const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0
           sizeInBytes = (base64Data.length * 3) / 4 - padding
           
-          console.log(`[ImageService] Iteration ${iterations}: Quality ${quality}%, Size ${(sizeInBytes / 1024).toFixed(2)} KB`)
+          console.log(
+            `[ImageService] Iteration ${iterations}: ` +
+            `${width}x${height}, Quality ${quality}%, ` +
+            `Scale ${(scaleFactor * 100).toFixed(0)}%, ` +
+            `Size ${(sizeInBytes / 1024).toFixed(2)} KB`
+          )
           
-          // Decrease quality for next iteration
+          // Adaptive compression strategy
           if (sizeInBytes > maxSizeBytes) {
-            quality -= 10
+            if (iterations <= 3) {
+              // First few iterations: reduce quality aggressively
+              quality -= 15
+            } else if (iterations <= 8) {
+              // Middle iterations: reduce quality and dimensions
+              quality -= 10
+              scaleFactor *= 0.9 // Reduce dimensions by 10%
+            } else {
+              // Later iterations: aggressive dimension reduction
+              quality = Math.max(5, quality - 5)
+              scaleFactor *= 0.85 // Reduce dimensions by 15%
+            }
+            
+            // Safety bounds
+            quality = Math.max(5, quality)
+            scaleFactor = Math.max(0.2, scaleFactor) // Don't go below 20% of original
           }
         }
         
-        // Check if compression was successful
-        if (sizeInBytes > maxSizeBytes * 2) {
+        // More lenient size check - allow up to 3x the target size
+        // (Better to save a slightly larger image than fail completely)
+        if (sizeInBytes > maxSizeBytes * 3) {
           reject(new Error(
-            `Image is too large even after compression. ` +
+            `Image is too large even after ${iterations} compression attempts. ` +
             `Final size: ${(sizeInBytes / 1024).toFixed(2)} KB, ` +
             `Maximum allowed: ${maxSizeKB} KB. ` +
-            `Please use a smaller image.`
+            `Original image: ${img.width}x${img.height}. ` +
+            `Please use a smaller image or take a new photo.`
           ))
           return
         }
         
         if (iterations >= maxIterations) {
-          console.warn(`[ImageService] Max iterations reached. Final size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
+          console.warn(`[ImageService] Max iterations (${maxIterations}) reached. Final size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
         }
         
-        console.log(`[ImageService] Compression successful! Final size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
+        if (sizeInBytes > maxSizeBytes && sizeInBytes <= maxSizeBytes * 3) {
+          console.warn(
+            `[ImageService] Image slightly over target size but acceptable. ` +
+            `Final: ${(sizeInBytes / 1024).toFixed(2)} KB, Target: ${maxSizeKB} KB`
+          )
+        }
+        
+        console.log(`[ImageService] Compression successful! Final size: ${(sizeInBytes / 1024).toFixed(2)} KB after ${iterations} iterations`)
         resolve(base64String)
         
       } catch (error) {
