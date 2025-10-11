@@ -260,7 +260,7 @@ const ChatTab = ({ tags }: ChatTabProps) => {
   }
 
   return (
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-16 bg-white dark:bg-gray-900 flex">
+    <div className="fixed inset-0 top-16 left-0 right-0 bottom-16 bg-white dark:bg-gray-900 flex">
       {/* Sidebar */}
       <div className={`${showSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col absolute lg:relative inset-0 lg:inset-auto z-30 lg:z-auto`}>
         {/* Sidebar Header */}
