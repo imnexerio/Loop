@@ -98,32 +98,31 @@ const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
   }
 
   return (
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-16 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
-      <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Profile Info */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-full mb-4">
-              <svg className="w-10 h-10 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-              {currentUser?.displayName || 'User'}
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {currentUser?.email}
-            </p>
+    <div className="space-y-6">
+      {/* Profile Info */}
+      <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-full mb-4">
+            <svg className="w-10 h-10 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
           </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+            {currentUser?.displayName || 'User'}
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {currentUser?.email}
+          </p>
         </div>
+      </div>
 
-        {/* Tags Management */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              Manage Tags
-            </h3>
-            <button
+      {/* Tags Management */}
+      <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+            Manage Tags
+          </h3>
+          <button
             onClick={() => setShowAddTag(!showAddTag)}
             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
           >
@@ -272,7 +271,7 @@ const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
       </div>
 
       {/* Logout */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8">
+      <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
         <button
           onClick={handleLogout}
           className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
@@ -282,7 +281,6 @@ const ProfileTab = ({ tags, onTagsChange }: ProfileTabProps) => {
           </svg>
           Logout
         </button>
-      </div>
       </div>
     </div>
   )
