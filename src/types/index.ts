@@ -20,6 +20,7 @@ export interface Session {
   timestamp: string
   description: string
   tags: Record<string, any> // tagId -> value
+  imageId?: string // Optional reference to image in separate storage
 }
 
 export interface DayLog {
@@ -39,6 +40,21 @@ export interface UserProfile {
   email: string
   createdAt: string
   settings: UserSettings
+  photoImageId?: string // Optional reference to profile picture
+}
+
+// Image storage types
+export type ImageType = 'profile' | 'session'
+
+export interface StoredImage {
+  id: string
+  type: ImageType
+  base64: string
+  createdAt: number
+  size: number
+  // For session images
+  sessionTimestamp?: number
+  date?: string
 }
 
 // UI State types

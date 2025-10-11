@@ -15,6 +15,7 @@ export {
   addSession as addSessionCached,
   deleteSession,
   subscribeToDayLog,
+  updateSessionImage,
   
   // Calendar
   getMonthDaysWithSessions as getMonthDaysWithSessionsCached,
@@ -27,7 +28,15 @@ export {
   getUserProfile,
   createUserProfile,
   updateUserProfile,
-  subscribeToProfile
+  subscribeToProfile,
+  
+  // Images
+  saveImage,
+  getImage,
+  deleteImage,
+  getAllImages,
+  getImagesForDate,
+  subscribeToImages
 } from './firebaseService'
 
 // Deprecated - no longer used with real-time database

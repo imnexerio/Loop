@@ -15,10 +15,11 @@ import {
   orderByKey,
   startAt,
   endAt,
+  update,
   type Unsubscribe
 } from 'firebase/database'
 import { database } from '../firebase/config'
-import { Tag, DayLog, Session, UserProfile } from '../types'
+import { Tag, DayLog, Session, UserProfile, StoredImage } from '../types'
 
 // ============================================
 // TYPES
@@ -28,6 +29,7 @@ import { Tag, DayLog, Session, UserProfile } from '../types'
 interface FirebaseSession {
   description: string
   tags: Record<string, any>
+  imageId?: string
 }
 
 // ============================================
@@ -519,4 +521,168 @@ export async function updateUserProfile(
  */
 export function unsubscribeAll(unsubscribes: Unsubscribe[]) {
   unsubscribes.forEach(unsub => unsub())
+}
+
+// ============================================
+// IMAGE STORAGE OPERATIONS
+// ============================================
+
+/**
+ * Save image to separate storage
+ * Returns the image ID
+ */
+export async function saveImage(
+  userId: string,
+  imageData: Omit<StoredImage, 'id'>
+): Promise<string> {
+  try {
+    // Generate unique image ID
+    const imageId = `${imageData.type}_${imageData.createdAt}_${Math.random().toString(36).substr(2, 9)}`
+    const imageRef = ref(database, `users/${userId}/images/${imageId}`)
+    
+    const image: StoredImage = {
+      id: imageId,
+      ...imageData
+    }
+    
+    await set(imageRef, image)
+    console.log(`[FirebaseService] Image saved: ${imageId}`)
+    
+    return imageId
+  } catch (error) {
+    console.error('Error saving image:', error)
+    throw error
+  }
+}
+
+/**
+ * Get image by ID
+ */
+export async function getImage(
+  userId: string,
+  imageId: string
+): Promise<StoredImage | null> {
+  try {
+    const imageRef = ref(database, `users/${userId}/images/${imageId}`)
+    const snapshot = await get(imageRef)
+    
+    if (!snapshot.exists()) {
+      console.warn(`[FirebaseService] Image not found: ${imageId}`)
+      return null
+    }
+    
+    return snapshot.val() as StoredImage
+  } catch (error) {
+    console.error('Error getting image:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete image by ID
+ */
+export async function deleteImage(
+  userId: string,
+  imageId: string
+): Promise<void> {
+  try {
+    const imageRef = ref(database, `users/${userId}/images/${imageId}`)
+    await remove(imageRef)
+    console.log(`[FirebaseService] Image deleted: ${imageId}`)
+  } catch (error) {
+    console.error('Error deleting image:', error)
+    throw error
+  }
+}
+
+/**
+ * Get all images for a user
+ */
+export async function getAllImages(
+  userId: string
+): Promise<StoredImage[]> {
+  try {
+    const imagesRef = ref(database, `users/${userId}/images`)
+    const snapshot = await get(imagesRef)
+    
+    if (!snapshot.exists()) {
+      return []
+    }
+    
+    const imagesObj = snapshot.val()
+    return Object.values(imagesObj)
+  } catch (error) {
+    console.error('Error getting all images:', error)
+    throw error
+  }
+}
+
+/**
+ * Get images for a specific date
+ */
+export async function getImagesForDate(
+  userId: string,
+  date: string
+): Promise<StoredImage[]> {
+  try {
+    const imagesRef = ref(database, `users/${userId}/images`)
+    const snapshot = await get(imagesRef)
+    
+    if (!snapshot.exists()) {
+      return []
+    }
+    
+    const imagesObj = snapshot.val() as Record<string, StoredImage>
+    const dateImages = Object.values(imagesObj).filter(
+      img => img.type === 'session' && img.date === date
+    )
+    
+    return dateImages
+  } catch (error) {
+    console.error('Error getting images for date:', error)
+    throw error
+  }
+}
+
+/**
+ * Update session to add image reference
+ */
+export async function updateSessionImage(
+  userId: string,
+  date: string,
+  timestamp: number,
+  imageId: string
+): Promise<void> {
+  try {
+    const sessionRef = ref(database, `users/${userId}/sessions/${date}/sessions/${timestamp}`)
+    await update(sessionRef, { imageId })
+    console.log(`[FirebaseService] Session updated with imageId: ${imageId}`)
+  } catch (error) {
+    console.error('Error updating session image:', error)
+    throw error
+  }
+}
+
+/**
+ * Subscribe to images with real-time updates
+ */
+export function subscribeToImages(
+  userId: string,
+  callback: (images: StoredImage[]) => void
+): Unsubscribe {
+  const imagesRef = ref(database, `users/${userId}/images`)
+  
+  const unsubscribe = onValue(imagesRef, (snapshot) => {
+    const imagesObj = snapshot.val()
+    
+    if (!imagesObj) {
+      callback([])
+      return
+    }
+    
+    const images = Object.values(imagesObj) as StoredImage[]
+    callback(images)
+  })
+  
+  return unsubscribe
 }
