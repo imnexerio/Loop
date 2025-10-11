@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addSessionCached } from '../services/dataManager'
-import { Tag, Session } from '../types'
+import { Tag } from '../types'
 
 interface AddSessionModalProps {
   isOpen: boolean
