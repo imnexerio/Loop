@@ -5,7 +5,7 @@
  * Based on Flutter implementation strategy
  */
 
-import { saveImage, updateSessionImage } from './dataManager'
+import { saveImage } from './dataManager'
 
 /**
  * Compress image file to Base64 string
@@ -29,90 +29,139 @@ export async function compressImageToBase64(
     const reader = new FileReader()
     
     reader.onload = (e) => {
-      img.src = e.target?.result as string
+      if (!e.target?.result) {
+        reject(new Error('Failed to read image file: no data returned'))
+        return
+      }
+      img.src = e.target.result as string
     }
     
     img.onload = async () => {
-      let quality = initialQuality
-      let base64String = ''
-      let sizeInBytes = Infinity
-      
-      // Iteratively compress until under size limit
-      while (sizeInBytes > maxSizeBytes && quality > 0) {
-        // Create canvas with max dimensions (optional resize)
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')!
+      try {
+        let quality = initialQuality
+        let base64String = ''
+        let sizeInBytes = Infinity
+        let iterations = 0
+        const maxIterations = 15 // Prevent infinite loops
         
-        // Optional: Resize to max dimensions (similar to minWidth/minHeight in Flutter)
-        const maxDimension = 1920
-        let width = img.width
-        let height = img.height
-        
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = (height / width) * maxDimension
-            width = maxDimension
+        // Iteratively compress until under size limit
+        while (sizeInBytes > maxSizeBytes && quality >= 5 && iterations < maxIterations) {
+          iterations++
+          
+          // Create canvas with max dimensions (optional resize)
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          
+          // Check if canvas context is available (can be null on some devices)
+          if (!ctx) {
+            reject(new Error('Canvas 2D context not supported on this device'))
+            return
+          }
+          
+          // Optional: Resize to max dimensions (similar to minWidth/minHeight in Flutter)
+          const maxDimension = 1920
+          let width = img.width
+          let height = img.height
+          
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height / width) * maxDimension
+              width = maxDimension
+            } else {
+              width = (width / height) * maxDimension
+              height = maxDimension
+            }
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          
+          // Draw image on canvas
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          // Convert to Base64 with quality
+          // Try toBlob first (better quality), fallback to toDataURL
+          if (typeof canvas.toBlob === 'function') {
+            try {
+              base64String = await new Promise<string>((res, rej) => {
+                canvas.toBlob(
+                  (blob) => {
+                    if (!blob) {
+                      rej(new Error('Blob conversion failed'))
+                      return
+                    }
+                    const blobReader = new FileReader()
+                    blobReader.onload = () => res(blobReader.result as string)
+                    blobReader.onerror = () => rej(new Error('Failed to read blob'))
+                    blobReader.readAsDataURL(blob)
+                  },
+                  'image/jpeg',
+                  quality / 100
+                )
+              })
+            } catch (blobError) {
+              console.warn('[ImageService] toBlob failed, using toDataURL fallback:', blobError)
+              base64String = canvas.toDataURL('image/jpeg', quality / 100)
+            }
           } else {
-            width = (width / height) * maxDimension
-            height = maxDimension
+            // Fallback for browsers that don't support toBlob
+            base64String = canvas.toDataURL('image/jpeg', quality / 100)
+          }
+          
+          // Validate base64 string
+          if (!base64String || !base64String.includes('base64,')) {
+            reject(new Error('Image compression produced invalid base64 data'))
+            return
+          }
+          
+          // Calculate actual size from base64 string
+          const base64Data = base64String.split(',')[1]
+          if (!base64Data) {
+            reject(new Error('Invalid base64 format after compression'))
+            return
+          }
+          
+          // More accurate size calculation
+          const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0
+          sizeInBytes = (base64Data.length * 3) / 4 - padding
+          
+          console.log(`[ImageService] Iteration ${iterations}: Quality ${quality}%, Size ${(sizeInBytes / 1024).toFixed(2)} KB`)
+          
+          // Decrease quality for next iteration
+          if (sizeInBytes > maxSizeBytes) {
+            quality -= 10
           }
         }
         
-        canvas.width = width
-        canvas.height = height
-        
-        // Draw image on canvas
-        ctx.drawImage(img, 0, 0, width, height)
-        
-        // Convert to Base64 with quality
-        base64String = canvas.toBlob 
-          ? await new Promise<string>((res) => {
-              canvas.toBlob(
-                (blob) => {
-                  if (!blob) {
-                    res('')
-                    return
-                  }
-                  const blobReader = new FileReader()
-                  blobReader.onload = () => res(blobReader.result as string)
-                  blobReader.readAsDataURL(blob)
-                },
-                'image/jpeg',
-                quality / 100
-              )
-            })
-          : canvas.toDataURL('image/jpeg', quality / 100)
-        
-        // Calculate size
-        const base64Data = base64String.split(',')[1]
-        sizeInBytes = (base64Data.length * 3) / 4 // Base64 to byte size
-        
-        console.log(`[ImageService] Quality: ${quality}%, Size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
-        
-        // Decrease quality for next iteration
-        quality -= 10
-        
-        // Safety check to prevent infinite loop
-        if (quality < 10 && sizeInBytes > maxSizeBytes) {
-          console.warn('[ImageService] Could not compress below size limit, using lowest quality')
-          break
+        // Check if compression was successful
+        if (sizeInBytes > maxSizeBytes * 2) {
+          reject(new Error(
+            `Image is too large even after compression. ` +
+            `Final size: ${(sizeInBytes / 1024).toFixed(2)} KB, ` +
+            `Maximum allowed: ${maxSizeKB} KB. ` +
+            `Please use a smaller image.`
+          ))
+          return
         }
+        
+        if (iterations >= maxIterations) {
+          console.warn(`[ImageService] Max iterations reached. Final size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
+        }
+        
+        console.log(`[ImageService] Compression successful! Final size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
+        resolve(base64String)
+        
+      } catch (error) {
+        reject(new Error(`Image compression failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
       }
-      
-      if (sizeInBytes > maxSizeBytes * 2) {
-        reject(new Error(`Image too large even after compression (${(sizeInBytes / 1024).toFixed(2)} KB)`))
-        return
-      }
-      
-      resolve(base64String)
     }
     
     img.onerror = () => {
-      reject(new Error('Failed to load image'))
+      reject(new Error('Failed to load image. The file may be corrupted or in an unsupported format.'))
     }
     
     reader.onerror = () => {
-      reject(new Error('Failed to read file'))
+      reject(new Error('Failed to read file from device storage.'))
     }
     
     reader.readAsDataURL(file)
@@ -178,8 +227,9 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
 // ============================================
 
 /**
- * Upload session image (compress + save + link to session)
- * All-in-one helper function
+ * Upload session image (compress + save + return ID)
+ * Note: Does NOT link to session - session should be created with imageId
+ * This allows image upload BEFORE session creation
  */
 export async function uploadSessionImage(
   userId: string,
@@ -207,9 +257,8 @@ export async function uploadSessionImage(
     date
   })
   
-  // Link to session
-  await updateSessionImage(userId, date, sessionTimestamp, imageId)
-  
+  // Return imageId - session will be created with this ID
+  console.log(`[ImageService] Image saved successfully: ${imageId}`)
   return imageId
 }
 

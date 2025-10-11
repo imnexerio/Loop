@@ -26,30 +26,96 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
     if (!currentUser || !description.trim()) return
 
     setSaving(true)
+    let imageId: string | undefined = undefined
+    
     try {
       // Generate timestamp ONCE for both session and image
       const timestamp = Date.now()
       
-      // Create session with explicit timestamp
-      const session = {
+      // STEP 1: Upload image FIRST if selected (this is the most likely to fail)
+      if (selectedImage) {
+        try {
+          console.log('[AddSessionModal] Uploading image...')
+          imageId = await uploadSessionImage(currentUser.uid, today, timestamp, selectedImage)
+          console.log('[AddSessionModal] Image uploaded successfully:', imageId)
+        } catch (imageError) {
+          // Specific error handling for image upload
+          console.error('[AddSessionModal] Image upload failed:', imageError)
+          
+          let errorMessage = 'Failed to upload image: '
+          if (imageError instanceof Error) {
+            const errMsg = imageError.message.toLowerCase()
+            
+            if (errMsg.includes('too large') || errMsg.includes('compression')) {
+              errorMessage += imageError.message
+            } else if (errMsg.includes('canvas') || errMsg.includes('context')) {
+              errorMessage += 'Your device does not support image processing. Try a different browser.'
+            } else if (errMsg.includes('blob')) {
+              errorMessage += 'Image conversion failed on your device. Try a different image or browser.'
+            } else if (errMsg.includes('network') || errMsg.includes('connection')) {
+              errorMessage += 'Network error. Please check your internet connection.'
+            } else if (errMsg.includes('permission')) {
+              errorMessage += 'Permission denied. Please check your browser settings.'
+            } else {
+              errorMessage += imageError.message
+            }
+          } else {
+            errorMessage += 'Unknown error occurred during image processing.'
+          }
+          
+          alert(errorMessage + '\n\nThe session will be saved without the image.')
+          // Continue to save session without image
+          imageId = undefined
+        }
+      }
+      
+      // STEP 2: Save session with optional imageId
+      const session: any = {
         timestamp: timestamp.toString(),
         description: description.trim(),
         tags: tagValues
       }
-
-      // Save session first
-      await addSessionCached(currentUser.uid, today, session)
       
-      // Upload image with SAME timestamp if selected
-      if (selectedImage) {
-        await uploadSessionImage(currentUser.uid, today, timestamp, selectedImage)
+      // Add imageId if image was successfully uploaded
+      if (imageId) {
+        session.imageId = imageId
+      }
+
+      try {
+        console.log('[AddSessionModal] Saving session...')
+        await addSessionCached(currentUser.uid, today, session)
+        console.log('[AddSessionModal] Session saved successfully')
+      } catch (sessionError) {
+        console.error('[AddSessionModal] Session save failed:', sessionError)
+        
+        let errorMessage = 'Failed to save session: '
+        if (sessionError instanceof Error) {
+          const errMsg = sessionError.message.toLowerCase()
+          
+          if (errMsg.includes('network') || errMsg.includes('connection')) {
+            errorMessage += 'Network error. Please check your internet connection and try again.'
+          } else if (errMsg.includes('permission')) {
+            errorMessage += 'Permission denied. Please check your Firebase permissions.'
+          } else if (errMsg.includes('quota') || errMsg.includes('limit')) {
+            errorMessage += 'Storage limit exceeded. Please contact support.'
+          } else {
+            errorMessage += sessionError.message
+          }
+        } else {
+          errorMessage += 'Unknown database error occurred.'
+        }
+        
+        alert(errorMessage)
+        throw sessionError // Re-throw to prevent closing modal
       }
       
+      // Success!
       onSessionAdded()
       onClose()
+      
     } catch (error) {
-      console.error('Error saving session:', error)
-      alert('Failed to save session. Please try again.')
+      console.error('[AddSessionModal] Fatal error:', error)
+      // Error already handled above with specific messages
     } finally {
       setSaving(false)
     }
