@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
+import { AuthProvider } from './contexts/AuthContext'
 import Login from './components/Login'
+import Dashboard from './components/Dashboard'
+import { useAuth } from './contexts/AuthContext'
 
-function App() {
+function AppContent() {
+  const { currentUser } = useAuth()
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   // Auto-detect system theme preference
@@ -28,8 +32,16 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
-      <Login />
+      {currentUser ? <Dashboard /> : <Login />}
     </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 
