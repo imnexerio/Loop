@@ -6,7 +6,6 @@
  */
 
 import { saveImage, updateSessionImage } from './dataManager'
-import type { StoredImage } from '../types'
 
 /**
  * Compress image file to Base64 string
