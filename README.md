@@ -1,6 +1,6 @@
 # Loop - Habit Tracker PWA 🌿
 
-A modern Progressive Web App for tracking daily sessions with custom metrics, built with React, TypeScript, Vite, Tailwind CSS, and Firebase Firestore.
+A modern Progressive Web App for tracking daily habits and sessions with custom metrics, AI insights, and beautiful UI. Built with React, TypeScript, Vite, Tailwind CSS, and Firebase.
 
 ## ✨ Features
 
@@ -8,206 +8,303 @@ A modern Progressive Web App for tracking daily sessions with custom metrics, bu
 - Email/Password signup and login
 - Google Sign-In integration
 - Secure Firebase Authentication
-- Auto-login with session persistence
+- Profile picture upload and management
 
-### 📊 **Analysis Tab**
+### 📊 **Session Tracking**
+- **Grid Layout** - Beautiful responsive grid (1/2/3 columns)
+- **Session Cards** - Compact cards showing time, description, tags, and images
+- **Daily Stats** - Gamified score system (0-100) based on sessions, tags, and images
+- **Image Upload** - Attach photos to sessions (compressed to 30KB)
+- **Image Viewer** - Full-screen viewer with zoom, pan, and download
+- **Real-time Updates** - Firebase Realtime Database integration
+
+### 📅 **Analysis Tab**
 - **Interactive Calendar** - Month view with session indicators
-- **Day View** - Click any date to see all sessions
-- **Session Tracking** - Multiple sessions per day with timestamps
-- **Read-only History** - Past sessions cannot be modified
-- **Session Indicators** - Green dots show days with logged data
-
-### ✍️ **Session Logging**
-- **Auto-save** - Sessions save automatically as you type (2-second debounce)
-- **Rich Descriptions** - Multi-line text for detailed notes
-- **Custom Metrics** - Track any metric with custom tags
-- **Flexible Tracking** - Each session has its own timestamp
-
-### 🏷️ **Custom Tags System**
-Create custom tracking metrics in Profile:
-- **Number** - Track values with min/max range (e.g., Mood 1-10)
-- **Rating** - Star ratings (e.g., 1-5 stars)
-- **Checkbox** - Simple Yes/No tracking
-- **Text** - Free-form text notes
-- **Time** - Track duration in minutes
-
-Each tag can have:
-- Custom name
-- Input type
-- Min/Max values
-- Units (glasses, kg, minutes, etc.)
+- **Day View** - Grid display of all sessions for selected date
+- **Charts & Insights** - Visualize your habit data
+- **Add Session** - Quick button in day view header
 
 ### 💬 **AI Chat Assistant**
-- **Gemini AI Integration** - Powered by Google's Gemini AI
-- Personalized habit insights based on your data
-- Pattern recognition and suggestions
-- Natural conversation about your progress
-- Context-aware responses using your recent logs
-- Markdown-formatted responses with lists and formatting
+- **Gemini AI Integration** - Powered by Google's Gemini 2.0 Flash
+- Conversation history saved locally
+- Sliding sidebar with chat management
+- Create multiple conversations
+- Delete old conversations
+- Context-aware responses using your last 7 days
+- Markdown-formatted responses
 - Suggested questions for quick insights
 
-### � **Offline Support** ⭐ NEW!
-- **Full Offline Functionality** - Works without internet connection
-- **IndexedDB Storage** - All data persists locally across app restarts
-- **Offline Queue** - Write operations queued when offline
-- **Automatic Sync** - Syncs to Firebase when connection returns
-- **Visual Indicators** - Clear offline/syncing/synced status banners
-- **Optimistic Updates** - Instant UI feedback, sync happens in background
-- **Queue Management** - Automatic retry logic with up to 10 attempts
-- **Data Persistence** - Close and reopen app offline, data remains
+### 🏷️ **Custom Tags System**
+Create custom tracking metrics:
+- **Number** - Values with min/max range
+- **Rating** - Star ratings (1-10)
+- **Checkbox** - Yes/No tracking
+- **Text** - Free-form notes
+- **Time** - Duration in minutes
 
-See [OFFLINE_GUIDE.md](./OFFLINE_GUIDE.md) for complete documentation.
-
-### �👤 **Profile Management**
-- User information display
+### 👤 **Profile Management**
+- **Profile Picture Upload** - Upload and compress images
+- Shows in top-right header throughout app
 - Tag creation and management
-- Tag deletion (with confirmation)
-- Settings for LLM provider
+- User settings
 - Logout functionality
 
-### 🎨 **UI/UX Features**
-- **Automatic Theme Detection** - Follows system preference
-- **Dark Mode** - Full dark theme support
-- **Responsive Design** - Works on mobile, tablet, and desktop
-- **Green Color Scheme** - Calming and productive
-- **Bottom Navigation** - Easy thumb access on mobile
-- **Floating Action Button** - Quick session creation
-- **Smooth Animations** - Polished user experience
+### 🎨 **Modern UI/UX**
+- **Pure Black Dark Mode** - OLED-friendly with subtle green tint
+- **Zoom Prevention** - Feels like a native app on mobile
+- **Smooth Animations** - Sliding sidebars and transitions
+- **Theme-aware Scrollbars** - Custom styled scrollbars
+- **Responsive Design** - Works on mobile, tablet, desktop
+- **Bottom Navigation** - Analysis, Add Session, Chat tabs
+- **Top Header** - App branding with hamburger menu (context-aware)
 
-## 🗄️ **Data Structure**
-
-```
-users/{userId}/
-  ├── profile
-  ├── tags/{tagId}
-  │     ├── name
-  │     ├── type
-  │     ├── config {min, max, unit}
-  │     └── createdAt
-  └── logs/{year}/months/{month}/days/{day}
-        ├── date
-        ├── sessions[]
-        │     ├── timestamp
-        │     ├── description
-        │     └── tags {tagId: value}
-        └── lastUpdated
-```
-
-## 🚀 **Getting Started**
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Firebase account
+- **Node.js** (v18 or higher) - [Download](https://nodejs.org/)
+- **npm** (comes with Node.js)
+- **Firebase Account** - [Sign up](https://console.firebase.google.com/)
+- **Google AI Studio Account** (optional, for chat) - [Sign up](https://aistudio.google.com/)
 
-### Installation
+### Step 1: Clone the Repository
 
-1. **Install dependencies:**
+```bash
+git clone https://github.com/imnexerio/loop.git
+cd loop
+```
+
+### Step 2: Install Dependencies
+
 ```bash
 npm install
 ```
 
-2. **Configure Firebase:**
+### Step 3: Firebase Setup
+
+1. **Create a Firebase Project:**
    - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Create a new project
-   - Enable **Firestore Database**
-   - Enable **Authentication** (Email/Password + Google)
-   - Copy your Firebase config
-   - Create a `.env` file in the project root:
+   - Click **"Add project"**
+   - Enter project name (e.g., "Loop Habit Tracker")
+   - Disable Google Analytics (optional)
+   - Click **"Create project"**
 
-```bash
-# Firebase Configuration
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-```
+2. **Enable Realtime Database:**
+   - In Firebase Console, go to **Build** → **Realtime Database**
+   - Click **"Create Database"**
+   - Choose location closest to you
+   - Start in **"Test mode"** (we'll secure it later)
+   - Click **"Enable"**
 
-3. **Configure Gemini AI (Optional - for Chat feature):**
-   - Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
-   - Create a free API key
-   - Add to your `.env` file:
+3. **Set up Database Rules:**
+   - Go to **Realtime Database** → **Rules** tab
+   - Replace with this secure configuration:
 
-```bash
-# Gemini AI Configuration
-VITE_GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-   > **Note:** The chat feature will work without an API key but will show setup instructions. The free tier of Gemini includes 60 requests per minute.
-
-4. **Set up Firestore Rules:**
 ```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+{
+  "rules": {
+    "users": {
+      "$userId": {
+        ".read": "$userId === auth.uid",
+        ".write": "$userId === auth.uid"
+      }
     }
   }
 }
 ```
 
-5. **Run the development server:**
+   - Click **"Publish"**
+
+4. **Enable Authentication:**
+   - Go to **Build** → **Authentication**
+   - Click **"Get started"**
+   - Enable **Email/Password** sign-in method
+   - Enable **Google** sign-in method (optional but recommended)
+
+5. **Get Firebase Config:**
+   - Go to **Project Settings** (gear icon)
+   - Scroll down to **"Your apps"**
+   - Click **"</>** (Web)" to add a web app
+   - Register app with nickname (e.g., "Loop Web")
+   - Copy the `firebaseConfig` object
+
+6. **Create `.env` file in project root:**
+
+```bash
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
+VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
+
+# Gemini AI Configuration (Optional)
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+   > **Important:** Replace all values with your actual Firebase config values!
+
+### Step 4: Gemini AI Setup (Optional - for Chat Feature)
+
+1. **Get Gemini API Key:**
+   - Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Click **"Get API key"** or **"Create API key"**
+   - Select your Firebase project or create new project
+   - Copy the API key
+
+2. **Add to `.env` file:**
+
+```bash
+VITE_GEMINI_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+   > **Note:** The chat feature will work without a key but show setup instructions. Free tier includes 60 requests/minute.
+
+### Step 5: Run the App
+
 ```bash
 npm run dev
 ```
 
-6. **Open your browser** at `http://localhost:5173`
+Open your browser at [http://localhost:5173](http://localhost:5173)
 
-## 📦 **Build for Production**
+### Step 6: Build for Production
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## 🛠️ **Tech Stack**
+The optimized build will be in the `dist/` folder.
 
-- **React 18** - UI library
+## 📱 Deployment
+
+### Deploy to Firebase Hosting
+
+1. **Install Firebase CLI:**
+```bash
+npm install -g firebase-tools
+```
+
+2. **Login to Firebase:**
+```bash
+firebase login
+```
+
+3. **Initialize Firebase:**
+```bash
+firebase init hosting
+```
+
+   - Select your Firebase project
+   - Set public directory to: `dist`
+   - Configure as single-page app: **Yes**
+   - Set up automatic builds: **No**
+
+4. **Build and Deploy:**
+```bash
+npm run build
+firebase deploy
+```
+
+Your app will be live at: `https://your-project.web.app`
+
+### Deploy to Vercel/Netlify
+
+1. **Connect your Git repository**
+2. **Set build command:** `npm run build`
+3. **Set output directory:** `dist`
+4. **Add environment variables** from your `.env` file
+
+## 🗄️ Database Structure
+
+```
+users/{userId}/
+  ├── profile/
+  │     ├── name
+  │     ├── email
+  │     ├── photoImageId (reference to image)
+  │     ├── createdAt
+  │     └── settings/
+  │           └── llmProvider
+  ├── tags/{tagId}/
+  │     ├── name
+  │     ├── type (number|rating|checkbox|text|time)
+  │     ├── config/ {min, max, unit}
+  │     └── createdAt
+  ├── sessions/{YYYY-MM-DD}/
+  │     ├── date
+  │     ├── lastUpdated
+  │     └── sessions/{timestamp}/
+  │           ├── description
+  │           ├── tags/ {tagId: value}
+  │           └── imageId (optional)
+  └── images/{imageId}/
+        ├── id
+        ├── type (profile|session)
+        ├── base64 (compressed image data)
+        ├── createdAt
+        ├── size
+        ├── sessionTimestamp (for session images)
+        └── date (for session images)
+```
+
+## 🛠️ Tech Stack
+
+- **React 18** - UI library with hooks
 - **TypeScript** - Type safety
-- **Vite** - Build tool & dev server
-- **Tailwind CSS** - Styling
-- **Firebase Firestore** - Database
-- **Firebase Auth** - Authentication
+- **Vite** - Fast build tool
+- **Tailwind CSS** - Utility-first styling
+- **Firebase Realtime Database** - Real-time data sync
+- **Firebase Authentication** - User management
+- **Google Gemini AI** - AI chat assistant
 - **Vite PWA Plugin** - Progressive Web App features
+- **React Markdown** - Markdown rendering in chat
 
-## 📱 **Project Structure**
+## � Project Structure
 
 ```
 Loop/
 ├── src/
 │   ├── components/
 │   │   ├── analysis/
-│   │   │   ├── Calendar.tsx      # Month calendar view
-│   │   │   └── DayView.tsx       # Session list for selected day
-│   │   ├── AddSessionModal.tsx   # Session creation modal
-│   │   ├── AnalysisTab.tsx       # Analysis tab container
-│   │   ├── ChatTab.tsx           # AI chat interface
-│   │   ├── Dashboard.tsx         # Main dashboard with tabs
-│   │   ├── Login.tsx             # Login/Signup page
-│   │   └── ProfileTab.tsx        # Profile & tag management
+│   │   │   ├── Calendar.tsx          # Month calendar view
+│   │   │   ├── DayView.tsx           # Grid of session cards
+│   │   │   ├── SessionCard.tsx       # Individual session card
+│   │   │   ├── DayStatsCard.tsx      # Daily score/stats card
+│   │   │   └── Charts.tsx            # Data visualizations
+│   │   ├── AddSessionModal.tsx       # Create session modal
+│   │   ├── AddSessionView.tsx        # Add Session tab view
+│   │   ├── AnalysisTab.tsx           # Analysis tab container
+│   │   ├── ChatTab.tsx               # AI chat interface
+│   │   ├── Dashboard.tsx             # Main app with navigation
+│   │   ├── ImageViewer.tsx           # Full-screen image viewer
+│   │   ├── Login.tsx                 # Login/signup page
+│   │   └── ProfileTab.tsx            # Profile management
 │   ├── contexts/
-│   │   └── AuthContext.tsx       # Authentication context
+│   │   └── AuthContext.tsx           # Authentication state
 │   ├── firebase/
-│   │   └── config.ts             # Firebase configuration
+│   │   └── config.ts                 # Firebase configuration
 │   ├── services/
-│   │   ├── firestore.ts          # Firestore CRUD operations
-│   │   ├── dataManager.ts        # Unified data layer with caching
-│   │   └── gemini.ts             # Gemini AI integration
+│   │   ├── firebaseService.ts        # Firebase CRUD operations
+│   │   ├── dataManager.ts            # Unified data layer
+│   │   ├── gemini.ts                 # Gemini AI integration
+│   │   └── imageService.ts           # Image compression
 │   ├── types/
-│   │   └── index.ts              # TypeScript interfaces
-│   ├── App.tsx                   # Main app component
-│   ├── main.tsx                  # Entry point
-│   └── index.css                 # Global styles
-├── public/                       # Static assets & PWA icons
-├── index.html                    # HTML template
-├── package.json                  # Dependencies
-├── tailwind.config.js            # Tailwind configuration
-├── tsconfig.json                 # TypeScript configuration
-└── vite.config.ts                # Vite & PWA configuration
+│   │   └── index.ts                  # TypeScript interfaces
+│   ├── App.tsx                       # Root component
+│   ├── main.tsx                      # Entry point
+│   └── index.css                     # Global styles & scrollbars
+├── public/                           # Static assets & PWA icons
+├── .env                              # Environment variables (gitignored)
+├── .env.example                      # Environment template
+├── index.html                        # HTML entry point
+├── package.json                      # Dependencies
+├── tailwind.config.js                # Tailwind & color config
+├── tsconfig.json                     # TypeScript configuration
+└── vite.config.ts                    # Vite & PWA configuration
 ```
 
 ## 🎯 **Usage Guide**
