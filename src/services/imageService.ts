@@ -8,19 +8,48 @@
 import { saveImage } from './dataManager'
 
 /**
- * Compress image file to Base64 string
- * Iteratively reduces quality until size is under maxSizeKB
- * Similar to Flutter's FlutterImageCompress approach
+ * Check if browser supports WebP format
+ * WebP provides 25-35% better compression than JPEG at same quality
+ */
+async function checkWebPSupport(): Promise<boolean> {
+  // Check if we've already tested
+  if (typeof (window as any).__webpSupport !== 'undefined') {
+    return (window as any).__webpSupport
+  }
+  
+  return new Promise((resolve) => {
+    const webpData = 'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA='
+    const img = new Image()
+    
+    img.onload = () => {
+      const result = img.width === 1 && img.height === 1
+      ;(window as any).__webpSupport = result
+      resolve(result)
+    }
+    
+    img.onerror = () => {
+      ;(window as any).__webpSupport = false
+      resolve(false)
+    }
+    
+    img.src = webpData
+  })
+}
+
+/**
+ * Compress image file to Base64 string with smart quality preservation
+ * Uses WebP format (30-50% smaller than JPEG) with JPEG fallback
+ * Adaptively reduces dimensions and quality to meet size target
  * 
  * @param file - Image file from input
  * @param maxSizeKB - Maximum size in kilobytes (default: 30 KB)
- * @param initialQuality - Starting quality (default: 100)
- * @returns Base64 string (data:image/jpeg;base64,...)
+ * @param initialQuality - Starting quality (default: 90 for better quality)
+ * @returns Base64 string (data:image/webp;base64,... or data:image/jpeg;base64,...)
  */
 export async function compressImageToBase64(
   file: File,
   maxSizeKB: number = 30,
-  initialQuality: number = 100
+  initialQuality: number = 90 // Start at 90 for better quality
 ): Promise<string> {
   const maxSizeBytes = maxSizeKB * 1024
   
@@ -38,137 +67,148 @@ export async function compressImageToBase64(
     
     img.onload = async () => {
       try {
-        // Detect device type for adaptive compression
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        // Check WebP support (30-50% better compression than JPEG)
+        const supportsWebP = await checkWebPSupport()
+        const format = supportsWebP ? 'image/webp' : 'image/jpeg'
         
-        console.log(`[ImageService] Original image: ${img.width}x${img.height}, Device: ${isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop'}`)
+        console.log(`[ImageService] Original: ${img.width}x${img.height}, Format: ${format}`)
         
         let quality = initialQuality
         let base64String = ''
         let sizeInBytes = Infinity
         let iterations = 0
-        const maxIterations = 20 // Allow more iterations for difficult images
+        const maxIterations = 20
         
-        // Adaptive starting dimensions based on device
-        // iOS Safari produces larger files, so start with smaller dimensions
-        let maxDimension = isIOS ? 1200 : isMobile ? 1400 : 1920
-        let scaleFactor = 1.0 // For progressive dimension reduction
+        // Start with good dimensions - WebP allows larger since it's more efficient
+        let maxDimension = supportsWebP ? 1600 : 1400
+        let scaleFactor = 1.0
+        
+        // Calculate aspect ratio for smart scaling
+        const aspectRatio = img.width / img.height
+        const isLandscape = aspectRatio > 1
         
         // Iteratively compress until under size limit
         while (sizeInBytes > maxSizeBytes && iterations < maxIterations) {
           iterations++
           
-          // Create canvas with max dimensions
           const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
+          const ctx = canvas.getContext('2d', { 
+            alpha: false, // No transparency = smaller file
+            desynchronized: true
+          })
           
-          // Check if canvas context is available (can be null on some devices)
           if (!ctx) {
             reject(new Error('Canvas 2D context not supported on this device'))
             return
           }
           
-          // Calculate dimensions with progressive scaling
+          // Calculate dimensions with smart scaling
           let width = img.width * scaleFactor
           let height = img.height * scaleFactor
           
-          // Apply max dimension constraint
+          // Apply max dimension constraint (respect aspect ratio)
           const currentMaxDim = maxDimension * scaleFactor
-          if (width > currentMaxDim || height > currentMaxDim) {
-            if (width > height) {
+          if (isLandscape) {
+            if (width > currentMaxDim) {
               height = (height / width) * currentMaxDim
               width = currentMaxDim
-            } else {
+            }
+          } else {
+            if (height > currentMaxDim) {
               width = (width / height) * currentMaxDim
               height = currentMaxDim
             }
           }
           
-          // Ensure dimensions are at least 100px
-          width = Math.max(100, Math.floor(width))
-          height = Math.max(100, Math.floor(height))
+          // Ensure reasonable minimum size
+          width = Math.max(200, Math.floor(width))
+          height = Math.max(200, Math.floor(height))
           
           canvas.width = width
           canvas.height = height
           
-          // Draw image on canvas
+          // High-quality rendering
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = 'high'
+          
+          // Draw and compress
           ctx.drawImage(img, 0, 0, width, height)
+          base64String = canvas.toDataURL(format, quality / 100)
           
-          // Use toDataURL for consistency across devices (toBlob behaves differently on iOS)
-          // toDataURL is more predictable and reliable
-          base64String = canvas.toDataURL('image/jpeg', quality / 100)
-          
-          // Validate base64 string
+          // Validate
           if (!base64String || !base64String.includes('base64,')) {
             reject(new Error('Image compression produced invalid base64 data'))
             return
           }
           
-          // Calculate actual size from base64 string
           const base64Data = base64String.split(',')[1]
           if (!base64Data) {
             reject(new Error('Invalid base64 format after compression'))
             return
           }
           
-          // More accurate size calculation
+          // Calculate actual size
           const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0
           sizeInBytes = (base64Data.length * 3) / 4 - padding
           
           console.log(
             `[ImageService] Iteration ${iterations}: ` +
             `${width}x${height}, Quality ${quality}%, ` +
-            `Scale ${(scaleFactor * 100).toFixed(0)}%, ` +
             `Size ${(sizeInBytes / 1024).toFixed(2)} KB`
           )
           
-          // Adaptive compression strategy
+          // Simple sequential reduction strategy
           if (sizeInBytes > maxSizeBytes) {
-            if (iterations <= 3) {
-              // First few iterations: reduce quality aggressively
+            const overSizeRatio = sizeInBytes / maxSizeBytes
+            
+            if (overSizeRatio > 2.0) {
+              // Way too large: reduce both aggressively
               quality -= 15
-            } else if (iterations <= 8) {
-              // Middle iterations: reduce quality and dimensions
+              scaleFactor *= 0.85
+            } else if (overSizeRatio > 1.5) {
+              // Moderately large: balanced reduction
               quality -= 10
-              scaleFactor *= 0.9 // Reduce dimensions by 10%
+              scaleFactor *= 0.92
+            } else if (overSizeRatio > 1.2) {
+              // Slightly large: focus on quality first
+              quality -= 8
+              scaleFactor *= 0.96
             } else {
-              // Later iterations: aggressive dimension reduction
-              quality = Math.max(5, quality - 5)
-              scaleFactor *= 0.85 // Reduce dimensions by 15%
+              // Very close: gentle quality reduction only
+              quality -= 5
             }
             
-            // Safety bounds
-            quality = Math.max(5, quality)
-            scaleFactor = Math.max(0.2, scaleFactor) // Don't go below 20% of original
+            // Keep quality reasonable (WebP maintains better quality at lower settings)
+            quality = Math.max(supportsWebP ? 55 : 45, quality)
+            scaleFactor = Math.max(0.3, scaleFactor)
           }
         }
         
-        // More lenient size check - allow up to 3x the target size
-        // (Better to save a slightly larger image than fail completely)
+        // Check if we achieved acceptable size
         if (sizeInBytes > maxSizeBytes * 3) {
           reject(new Error(
             `Image is too large even after ${iterations} compression attempts. ` +
             `Final size: ${(sizeInBytes / 1024).toFixed(2)} KB, ` +
             `Maximum allowed: ${maxSizeKB} KB. ` +
-            `Original image: ${img.width}x${img.height}. ` +
-            `Please use a smaller image or take a new photo.`
+            `Original: ${img.width}x${img.height}. ` +
+            `Please use a smaller image.`
           ))
           return
         }
         
-        if (iterations >= maxIterations) {
-          console.warn(`[ImageService] Max iterations (${maxIterations}) reached. Final size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
-        }
-        
         if (sizeInBytes > maxSizeBytes && sizeInBytes <= maxSizeBytes * 3) {
           console.warn(
-            `[ImageService] Image slightly over target size but acceptable. ` +
-            `Final: ${(sizeInBytes / 1024).toFixed(2)} KB, Target: ${maxSizeKB} KB`
+            `[ImageService] Image slightly over target but acceptable. ` +
+            `Final: ${(sizeInBytes / 1024).toFixed(2)} KB (Target: ${maxSizeKB} KB)`
           )
         }
         
-        console.log(`[ImageService] Compression successful! Final size: ${(sizeInBytes / 1024).toFixed(2)} KB after ${iterations} iterations`)
+        console.log(
+          `[ImageService] ✅ Compression successful! ` +
+          `Final: ${(sizeInBytes / 1024).toFixed(2)} KB after ${iterations} iterations ` +
+          `(${supportsWebP ? 'WebP' : 'JPEG'} format)`
+        )
+        
         resolve(base64String)
         
       } catch (error) {
