@@ -89,7 +89,7 @@ const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => 
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
+    <div>
       {/* Header */}
       <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
         <div>
