@@ -86,7 +86,10 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
       </div>
 
       {/* Description */}
-      <p className={`text-sm text-gray-700 dark:text-gray-300 mb-3 ${isExpanded ? '' : 'line-clamp-3'} min-h-[60px]`}>
+      <p 
+        className={`text-sm text-gray-700 dark:text-gray-300 mb-3 ${isExpanded ? '' : 'line-clamp-3'}`}
+        title={!isExpanded && session.description.length > 100 ? session.description : undefined}
+      >
         {session.description}
       </p>
 
@@ -126,14 +129,17 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
             const tag = getTagById(tagId)
             if (!tag) return null
 
+            const displayValue = renderTagValue(tag, value)
+
             return (
               <div
                 key={tagId}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs"
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs max-w-full"
+                title={`${tag.name}: ${displayValue}`}
               >
-                <span className="text-gray-600 dark:text-gray-400">{tag.name}:</span>
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {renderTagValue(tag, value)}
+                <span className="text-gray-600 dark:text-gray-400 truncate max-w-[100px]">{tag.name}:</span>
+                <span className="font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
+                  {displayValue}
                 </span>
               </div>
             )
