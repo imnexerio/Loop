@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import { getDayLogCached } from '../../services/dataManager'
 import { DayLog, Tag } from '../../types'
 import SessionCard from './SessionCard'
-import DayStatsCard from './DayStatsCard'
 
 interface DayViewProps {
   date: string
@@ -119,9 +118,6 @@ const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => 
                 tags={tags}
               />
             ))}
-
-            {/* Stats Card */}
-            <DayStatsCard dayLog={dayLog} tags={tags} />
           </div>
         )}
       </div>
