@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { getDayLogCached } from '../../services/dataManager'
+import { getDayLogCached, subscribeToDayLog } from '../../services/dataManager'
 import { DayLog, Tag } from '../../types'
 import SessionCard from './SessionCard'
 
@@ -9,31 +9,48 @@ interface DayViewProps {
   tags: Tag[]
   onBack: () => void
   onAddSession: () => void
-  refreshTrigger?: number
 }
 
-const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => {
+const DayView = ({ date, tags, onAddSession }: DayViewProps) => {
   const { currentUser } = useAuth()
   const [dayLog, setDayLog] = useState<DayLog | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Memoize isToday check to avoid recalculating on every render
+  const isToday = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]
+    return date === today
+  }, [date])
+
   useEffect(() => {
     if (!currentUser) return
 
-    const loadDayLog = async () => {
-      setLoading(true)
-      try {
-        const log = await getDayLogCached(currentUser.uid, date)
-        setDayLog(log)
-      } catch (error) {
-        console.error('Error loading day log:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
+    setLoading(true)
 
-    loadDayLog()
-  }, [currentUser, date, refreshTrigger])
+    if (isToday) {
+      // Real-time subscription for today's date
+      const unsubscribe = subscribeToDayLog(currentUser.uid, date, (log) => {
+        setDayLog(log)
+        setLoading(false)
+      })
+
+      return () => unsubscribe()
+    } else {
+      // One-time fetch for old dates
+      const loadDayLog = async () => {
+        try {
+          const log = await getDayLogCached(currentUser.uid, date)
+          setDayLog(log)
+        } catch (error) {
+          console.error('Error loading day log:', error)
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      loadDayLog()
+    }
+  }, [currentUser, date, isToday])
 
   const formatDate = useCallback((dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00')
@@ -44,12 +61,6 @@ const DayView = ({ date, tags, onAddSession, refreshTrigger }: DayViewProps) => 
       day: 'numeric' 
     })
   }, [])
-
-  // Memoize isToday check to avoid recalculating on every render
-  const isToday = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    return date === today
-  }, [date])
 
   if (loading) {
     return (

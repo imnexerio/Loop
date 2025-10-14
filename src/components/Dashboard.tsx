@@ -18,53 +18,59 @@ const Dashboard = () => {
   const [showProfile, setShowProfile] = useState(false)
   const [showChatSidebar, setShowChatSidebar] = useState(false)
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   // Load user tags
-  useEffect(() => {
+  const loadTags = useCallback(async () => {
     if (!currentUser) return
-
-    const loadTags = async () => {
-      try {
-        const userTags = await getTags(currentUser.uid)
-        setTags(userTags)
-      } catch (error) {
-        console.error('Error loading tags:', error)
-      }
+    
+    try {
+      const userTags = await getTags(currentUser.uid)
+      setTags(userTags)
+    } catch (error) {
+      console.error('Error loading tags:', error)
     }
+  }, [currentUser])
 
+  useEffect(() => {
     loadTags()
-  }, [currentUser, refreshKey])
+  }, [loadTags])
 
   // Load profile picture
-  useEffect(() => {
-    const loadProfilePicture = async () => {
-      if (!currentUser) return
-      
-      try {
-        const profile = await getUserProfile(currentUser.uid)
-        if (profile?.photoImageId) {
-          const image = await getImage(currentUser.uid, profile.photoImageId)
-          if (image) {
-            setProfilePicture(image.base64)
-          }
+  const loadProfilePicture = useCallback(async () => {
+    if (!currentUser) return
+    
+    try {
+      const profile = await getUserProfile(currentUser.uid)
+      if (profile?.photoImageId) {
+        const image = await getImage(currentUser.uid, profile.photoImageId)
+        if (image) {
+          setProfilePicture(image.base64)
         }
-      } catch (error) {
-        console.error('Error loading profile picture:', error)
       }
+    } catch (error) {
+      console.error('Error loading profile picture:', error)
     }
+  }, [currentUser])
 
+  useEffect(() => {
     loadProfilePicture()
-  }, [currentUser, refreshKey])
+  }, [loadProfilePicture])
 
   const handleSessionAdded = useCallback(() => {
     setShowAddSession(false)
-    setRefreshKey(prev => prev + 1)
+    // No need to refetch - real-time subscription handles it
   }, [])
 
-  const handleTagsChange = useCallback(() => {
-    setRefreshKey(prev => prev + 1)
-  }, [])
+  const handleOpenAddSession = useCallback(async () => {
+    // Fetch fresh tags before opening modal
+    await loadTags()
+    setShowAddSession(true)
+  }, [loadTags])
+
+  const handleTagsChange = useCallback(async () => {
+    // Refetch tags after changes
+    await loadTags()
+  }, [loadTags])
 
   const getTabIcon = (tab: TabType) => {
     switch (tab) {
@@ -134,15 +140,13 @@ const Dashboard = () => {
         {activeTab === 'analysis' && (
           <AnalysisTab 
             tags={tags} 
-            onAddSession={() => setShowAddSession(true)}
-            refreshTrigger={refreshKey}
+            onAddSession={handleOpenAddSession}
           />
         )}
         {activeTab === 'addSession' && (
           <AddSessionView
             tags={tags}
-            onAddSession={() => setShowAddSession(true)}
-            refreshTrigger={refreshKey}
+            onAddSession={handleOpenAddSession}
           />
         )}
         {activeTab === 'chat' && (
@@ -226,7 +230,10 @@ const Dashboard = () => {
                 <ProfileTab 
                   tags={tags} 
                   onTagsChange={handleTagsChange}
-                  onProfileUpdate={() => setRefreshKey(prev => prev + 1)}
+                  onProfileUpdate={async () => {
+                    await loadProfilePicture()
+                    await loadTags()
+                  }}
                 />
               </div>
             </div>

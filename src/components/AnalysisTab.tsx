@@ -7,10 +7,9 @@ import { Tag } from '../types'
 interface AnalysisTabProps {
   tags: Tag[]
   onAddSession: () => void
-  refreshTrigger?: number
 }
 
-const AnalysisTab = ({ tags, onAddSession, refreshTrigger }: AnalysisTabProps) => {
+const AnalysisTab = ({ tags, onAddSession }: AnalysisTabProps) => {
   // Initialize with today's date
   const today = new Date().toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState<string | null>(today)
@@ -35,7 +34,6 @@ const AnalysisTab = ({ tags, onAddSession, refreshTrigger }: AnalysisTabProps) =
             <Calendar
               onDateSelect={handleDateSelect}
               selectedDate={selectedDate}
-              refreshTrigger={refreshTrigger}
             />
           </div>
 
@@ -49,7 +47,6 @@ const AnalysisTab = ({ tags, onAddSession, refreshTrigger }: AnalysisTabProps) =
                     tags={tags}
                     onBack={() => setSelectedDate(null)}
                     onAddSession={onAddSession}
-                    refreshTrigger={refreshTrigger}
                   />
                 </div>
               </div>
@@ -68,7 +65,7 @@ const AnalysisTab = ({ tags, onAddSession, refreshTrigger }: AnalysisTabProps) =
         </div>
 
         {/* Charts Section - Full Width */}
-        <Charts tags={tags} refreshTrigger={refreshTrigger} />
+        <Charts tags={tags} />
       </div>
     </div>
   )

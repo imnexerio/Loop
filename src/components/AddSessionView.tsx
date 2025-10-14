@@ -4,10 +4,9 @@ import { Tag } from '../types'
 interface AddSessionViewProps {
   tags: Tag[]
   onAddSession: () => void
-  refreshTrigger?: number
 }
 
-const AddSessionView = ({ tags, onAddSession, refreshTrigger }: AddSessionViewProps) => {
+const AddSessionView = ({ tags, onAddSession }: AddSessionViewProps) => {
   // Always show today's date
   const today = new Date().toISOString().split('T')[0]
 
@@ -21,7 +20,6 @@ const AddSessionView = ({ tags, onAddSession, refreshTrigger }: AddSessionViewPr
               tags={tags}
               onBack={() => {}} // No back action needed for this view
               onAddSession={onAddSession}
-              refreshTrigger={refreshTrigger}
             />
           </div>
         </div>

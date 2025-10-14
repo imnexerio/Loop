@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addSessionCached } from '../services/dataManager'
+import { addSessionCached, getTags } from '../services/dataManager'
 import { uploadSessionImage, validateImageFile } from '../services/imageService'
 import { Tag } from '../types'
 
@@ -11,16 +11,39 @@ interface AddSessionModalProps {
   onSessionAdded: () => void
 }
 
-const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionModalProps) => {
+const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }: AddSessionModalProps) => {
   const { currentUser } = useAuth()
   const [description, setDescription] = useState('')
   const [tagValues, setTagValues] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>('')
+  const [tags, setTags] = useState<Tag[]>(initialTags)
+  const [loadingTags, setLoadingTags] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const today = new Date().toISOString().split('T')[0]
+
+  // Fetch fresh tags when modal opens
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      const fetchTags = async () => {
+        setLoadingTags(true)
+        try {
+          const freshTags = await getTags(currentUser.uid)
+          setTags(freshTags)
+        } catch (error) {
+          console.error('Error fetching tags:', error)
+          // Fall back to initialTags if fetch fails
+          setTags(initialTags)
+        } finally {
+          setLoadingTags(false)
+        }
+      }
+
+      fetchTags()
+    }
+  }, [isOpen, currentUser, initialTags])
 
   // Manual save function
   const saveSession = async () => {
@@ -378,16 +401,21 @@ const AddSessionModal = ({ isOpen, onClose, tags, onSessionAdded }: AddSessionMo
           </div>
 
           {/* Tags */}
-          {tags.length > 0 && (
+          {loadingTags ? (
+            <div className="text-center py-6">
+              <div className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                Loading tags...
+              </div>
+            </div>
+          ) : tags.length > 0 ? (
             <div>
               <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                 Track your metrics (optional)
               </h3>
               {tags.map(tag => renderTagInput(tag))}
             </div>
-          )}
-
-          {tags.length === 0 && (
+          ) : (
             <div className="text-center py-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                 No tags created yet

@@ -6,10 +6,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 interface ChartsProps {
   tags: Tag[]
-  refreshTrigger?: number
 }
 
-const Charts = memo(({ tags, refreshTrigger }: ChartsProps) => {
+const Charts = memo(({ tags }: ChartsProps) => {
   const { currentUser } = useAuth()
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [chartData, setChartData] = useState<{ date: string; value: number | null }[]>([])
@@ -48,7 +47,7 @@ const Charts = memo(({ tags, refreshTrigger }: ChartsProps) => {
     }
 
     loadChartData()
-  }, [selectedTag, currentUser?.uid, dateRange, refreshTrigger])
+  }, [selectedTag, currentUser?.uid, dateRange])
 
   // Memoize formatted data to avoid recalculating on every render
   const formattedData = useMemo(() => 

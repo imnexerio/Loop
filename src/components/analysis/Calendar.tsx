@@ -5,10 +5,9 @@ import { getMonthDaysWithSessionsCached } from '../../services/dataManager'
 interface CalendarProps {
   onDateSelect: (date: string) => void
   selectedDate: string | null
-  refreshTrigger?: number
 }
 
-const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps) => {
+const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
   const { currentUser } = useAuth()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [daysWithSessions, setDaysWithSessions] = useState<Set<string>>(new Set())
@@ -37,7 +36,7 @@ const Calendar = ({ onDateSelect, selectedDate, refreshTrigger }: CalendarProps)
     }
 
     loadSessionDays()
-  }, [currentUser, year, month, refreshTrigger])
+  }, [currentUser, year, month])
 
   // Get first day of month and total days
   const firstDayOfMonth = new Date(year, month, 1).getDay()
