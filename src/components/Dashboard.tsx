@@ -67,6 +67,12 @@ const Dashboard = () => {
     setShowAddSession(true)
   }, [loadTags])
 
+  const handleOpenProfile = useCallback(async () => {
+    // Fetch fresh tags before opening profile
+    await loadTags()
+    setShowProfile(true)
+  }, [loadTags])
+
   const handleTagsChange = useCallback(async () => {
     // Refetch tags after changes
     await loadTags()
@@ -116,7 +122,7 @@ const Dashboard = () => {
         {/* Profile Icon - Right Side */}
         <div className="flex-1 flex justify-end">
           <button
-            onClick={() => setShowProfile(true)}
+            onClick={handleOpenProfile}
             className="w-10 h-10 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full flex items-center justify-center transition-colors overflow-hidden"
             aria-label="Profile"
           >
