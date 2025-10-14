@@ -14,6 +14,7 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageLoading, setImageLoading] = useState(false)
   const [showImageViewer, setShowImageViewer] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Load image if session has imageId
   useEffect(() => {
@@ -65,15 +66,12 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
     }
   }
 
-  // Truncate description
-  const truncateDescription = (text: string, maxLength: number = 80) => {
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength) + '...'
-  }
+  // Check if card has expandable content
+  const hasMoreContent = session.description.length > 120 || (session.tags && Object.keys(session.tags).length > 3)
 
   return (
     <>
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border border-gray-200 dark:border-gray-700 transition-all duration-200">
 
       {/* Time Badge */}
       <div className="flex items-center gap-2 mb-3">
@@ -88,8 +86,8 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
       </div>
 
       {/* Description */}
-      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 line-clamp-3 min-h-[60px]">
-        {truncateDescription(session.description)}
+      <p className={`text-sm text-gray-700 dark:text-gray-300 mb-3 ${isExpanded ? '' : 'line-clamp-3'} min-h-[60px]`}>
+        {session.description}
       </p>
 
       {/* Image Thumbnail */}
@@ -124,7 +122,7 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
       {/* Tags */}
       {session.tags && Object.keys(session.tags).length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-auto">
-          {Object.entries(session.tags).slice(0, 3).map(([tagId, value]) => {
+          {Object.entries(session.tags).slice(0, isExpanded ? undefined : 3).map(([tagId, value]) => {
             const tag = getTagById(tagId)
             if (!tag) return null
 
@@ -140,12 +138,30 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
               </div>
             )
           })}
-          {Object.keys(session.tags).length > 3 && (
+          {!isExpanded && Object.keys(session.tags).length > 3 && (
             <div className="inline-flex items-center px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-400">
               +{Object.keys(session.tags).length - 3}
             </div>
           )}
         </div>
+      )}
+
+      {/* Expand/Collapse Button */}
+      {hasMoreContent && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors py-1"
+        >
+          <span className="font-medium">{isExpanded ? 'Show Less' : 'Show More'}</span>
+          <svg
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       )}
     </div>
 
