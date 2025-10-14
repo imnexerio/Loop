@@ -201,7 +201,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
 
     const commonProps = {
       data: mergedChartData,
-      margin: { top: 5, right: 20, left: 0, bottom: 5 }
+      margin: { top: 5, right: 10, left: -20, bottom: 5 }
     }
 
     const lines = selectedTagIds.map((tagId, index) => {
@@ -261,6 +261,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
         <YAxis 
           stroke="#9ca3af"
           style={{ fontSize: '12px' }}
+          width={40}
         />
         <Tooltip
           contentStyle={{
