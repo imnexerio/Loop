@@ -368,39 +368,6 @@ Loop/
 - ✅ App-like experience
 - ✅ Auto-updates
 
-## 📚 **Documentation**
-
-- **[OFFLINE_GUIDE.md](./OFFLINE_GUIDE.md)** - Complete offline functionality guide
-- **[OFFLINE_IMPLEMENTATION.md](./OFFLINE_IMPLEMENTATION.md)** - Implementation summary
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture and data flow diagrams
-- **[CHAT_SETUP.md](./CHAT_SETUP.md)** - AI chat setup instructions
-
-## ❓ FAQ: Where do I get the .env values? Is it free?
-
-- Firebase values (VITE_FIREBASE_...)
-  - Get them from Firebase Console:
-    1) Go to https://console.firebase.google.com
-    2) Open your project > Gear icon (Project settings)
-    3) General tab > Your apps > Web app > SDK setup and configuration > Config
-    4) Copy these fields into your .env:
-       - apiKey            -> VITE_FIREBASE_API_KEY
-       - authDomain        -> VITE_FIREBASE_AUTH_DOMAIN
-       - projectId         -> VITE_FIREBASE_PROJECT_ID
-       - storageBucket     -> VITE_FIREBASE_STORAGE_BUCKET
-       - messagingSenderId -> VITE_FIREBASE_MESSAGING_SENDER_ID
-       - appId             -> VITE_FIREBASE_APP_ID
-
-- Gemini API key (VITE_GEMINI_API_KEY)
-  - Get it from Google AI Studio:
-    1) Visit https://aistudio.google.com/app/apikey (or https://makersuite.google.com/app/apikey)
-    2) Create an API key
-    3) Put it in your .env as VITE_GEMINI_API_KEY
-
-Is it free?
-- Firebase: You can start on the Spark (Free) plan. It includes generous free quotas for Authentication and Firestore suitable for development and small personal projects. For production apps with higher traffic, you may need to upgrade to a paid plan. See official pricing: https://firebase.google.com/pricing
-- Gemini API: Google AI Studio offers a free tier for development with rate limits. It’s typically enough for testing the chat feature locally. For heavier/prod usage you may need to enable billing or use Google Cloud’s Generative AI pricing. See: https://ai.google.dev/pricing
-
-Tip: After creating or changing the .env file, restart the Vite dev server so the new values are picked up.
 
 ## 📄 **License**
 
