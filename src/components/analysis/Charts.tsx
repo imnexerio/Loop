@@ -14,6 +14,13 @@ interface ChartsProps {
 type ChartType = 'line' | 'bar' | 'area'
 type AggregationType = 'average' | 'sum' | 'min' | 'max'
 
+interface ChartPreferences {
+  selectedTagIds: string[]
+  chartType: ChartType
+  aggregationType: AggregationType
+  dateRange: 7 | 14 | 30
+}
+
 // Color palette for multiple metrics
 const CHART_COLORS = [
   '#3b82f6', // blue
@@ -34,6 +41,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
   const [dateRange, setDateRange] = useState<7 | 14 | 30>(30)
   const [chartData, setChartData] = useState<Record<string, { date: string; value: number | null }[]>>({})
   const [loading, setLoading] = useState(false)
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false)
 
   // Memoize plottable tags
   const plottableTags = useMemo(() => 
@@ -43,12 +51,61 @@ const Charts = memo(({ tags }: ChartsProps) => {
     [tags]
   )
 
-  // Auto-select first tag if none selected
+  // Load preferences from localStorage on mount
   useEffect(() => {
-    if (plottableTags.length > 0 && selectedTagIds.length === 0) {
+    if (!currentUser || preferencesLoaded) return
+
+    try {
+      const storageKey = `chartPreferences_${currentUser.uid}`
+      const savedPrefs = localStorage.getItem(storageKey)
+
+      if (savedPrefs) {
+        const prefs: ChartPreferences = JSON.parse(savedPrefs)
+
+        // Validate that selected tags still exist
+        const validTagIds = prefs.selectedTagIds.filter((id: string) => 
+          plottableTags.some(tag => tag.id === id)
+        )
+
+        if (validTagIds.length > 0) {
+          setSelectedTagIds(validTagIds)
+        }
+        setChartType(prefs.chartType)
+        setAggregationType(prefs.aggregationType)
+        setDateRange(prefs.dateRange)
+      }
+    } catch (error) {
+      console.error('Error loading chart preferences from localStorage:', error)
+    } finally {
+      setPreferencesLoaded(true)
+    }
+  }, [currentUser, plottableTags, preferencesLoaded])
+
+  // Save preferences to localStorage whenever they change
+  useEffect(() => {
+    if (!currentUser || !preferencesLoaded || selectedTagIds.length === 0) return
+
+    try {
+      const storageKey = `chartPreferences_${currentUser.uid}`
+      const chartPreferences: ChartPreferences = {
+        selectedTagIds,
+        chartType,
+        aggregationType,
+        dateRange
+      }
+
+      localStorage.setItem(storageKey, JSON.stringify(chartPreferences))
+    } catch (error) {
+      console.error('Error saving chart preferences to localStorage:', error)
+    }
+  }, [currentUser, selectedTagIds, chartType, aggregationType, dateRange, preferencesLoaded])
+
+  // Auto-select first tag if none selected (only after preferences loaded)
+  useEffect(() => {
+    if (plottableTags.length > 0 && selectedTagIds.length === 0 && preferencesLoaded) {
       setSelectedTagIds([plottableTags[0].id])
     }
-  }, [plottableTags, selectedTagIds.length])
+  }, [plottableTags, selectedTagIds.length, preferencesLoaded])
 
   // Fetch data for all selected tags
   useEffect(() => {
