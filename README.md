@@ -283,41 +283,44 @@ Loop/
 ├── src/
 │   ├── components/
 │   │   ├── analysis/
-│   │   │   ├── Calendar.tsx          # Month calendar view
-│   │   │   ├── DayView.tsx           # Grid of session cards
-│   │   │   ├── SessionCard.tsx       # Individual session card
-│   │   │   ├── DayStatsCard.tsx      # Daily score/stats card
-│   │   │   └── Charts.tsx            # Data visualizations
-│   │   ├── AddSessionModal.tsx       # Create session modal
-│   │   ├── AddSessionView.tsx        # Add Session tab view
-│   │   ├── AnalysisTab.tsx           # Analysis tab container
-│   │   ├── ChatTab.tsx               # AI chat interface
-│   │   ├── Dashboard.tsx             # Main app with navigation
-│   │   ├── ImageViewer.tsx           # Full-screen image viewer
-│   │   ├── Login.tsx                 # Login/signup page
-│   │   └── ProfileTab.tsx            # Profile management
+│   │   │   ├── Calendar.tsx          # Interactive month calendar with session indicators
+│   │   │   ├── Charts.tsx            # Recharts visualizations (line/bar/area)
+│   │   │   ├── DayView.tsx           # Grid layout of session cards for selected date
+│   │   │   └── SessionCard.tsx       # Individual session card with tags/images
+│   │   ├── AddSessionModal.tsx       # Create/edit session modal
+│   │   ├── AddSessionView.tsx        # Add Session tab (3rd tab in nav)
+│   │   ├── AnalysisTab.tsx           # Analysis tab with calendar + day view + charts
+│   │   ├── ChatTab.tsx               # AI chat interface with Gemini integration
+│   │   ├── Dashboard.tsx             # Main app shell with bottom nav + top header
+│   │   ├── ImageViewer.tsx           # Full-screen image viewer with zoom/pan
+│   │   ├── Login.tsx                 # Authentication page (login/signup)
+│   │   └── ProfileTab.tsx            # Profile settings and tag management
 │   ├── contexts/
-│   │   └── AuthContext.tsx           # Authentication state
+│   │   └── AuthContext.tsx           # Firebase Authentication context
 │   ├── firebase/
-│   │   └── config.ts                 # Firebase configuration
+│   │   └── config.ts                 # Firebase SDK initialization
 │   ├── services/
-│   │   ├── firebaseService.ts        # Firebase CRUD operations
-│   │   ├── dataManager.ts            # Unified data layer
-│   │   ├── gemini.ts                 # Gemini AI integration
-│   │   └── imageService.ts           # Image compression
+│   │   ├── dataManager.ts            # Unified data layer with caching
+│   │   ├── firebaseService.ts        # Firebase Realtime Database operations
+│   │   ├── gemini.ts                 # Gemini AI API integration
+│   │   └── imageService.ts           # Image compression to 30KB base64
 │   ├── types/
-│   │   └── index.ts                  # TypeScript interfaces
-│   ├── App.tsx                       # Root component
-│   ├── main.tsx                      # Entry point
-│   └── index.css                     # Global styles & scrollbars
-├── public/                           # Static assets & PWA icons
+│   │   └── index.ts                  # TypeScript type definitions
+│   ├── App.tsx                       # Root component with routing
+│   ├── index.css                     # Global styles + custom scrollbars
+│   ├── main.tsx                      # React entry point
+│   └── vite-env.d.ts                 # Vite environment type declarations
+├── public/                           # Static assets (PWA icons, manifest)
 ├── .env                              # Environment variables (gitignored)
+├── .env.example                      # Environment variables template
 ├── firebase.json                     # Firebase hosting configuration
 ├── index.html                        # HTML entry point
-├── package.json                      # Dependencies
-├── tailwind.config.js                # Tailwind & color config
+├── package.json                      # Dependencies and scripts
+├── postcss.config.js                 # PostCSS configuration
+├── tailwind.config.js                # Tailwind CSS + custom colors
 ├── tsconfig.json                     # TypeScript configuration
-└── vite.config.ts                    # Vite & PWA configuration
+├── tsconfig.node.json                # TypeScript config for Node scripts
+└── vite.config.ts                    # Vite + PWA plugin configuration
 ```
 
 ## 🎯 **Usage Guide**
