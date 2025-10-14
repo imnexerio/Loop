@@ -414,12 +414,12 @@ export async function getTagDataRange(
       const sessions: Session[] = Object.entries(sessionsObj).map(([timestamp, session]) => ({
         timestamp: timestamp,
         description: (session as FirebaseSession).description,
-        tags: (session as FirebaseSession).tags
+        tags: (session as FirebaseSession).tags || {}
       }))
       
       // Calculate average value for this tag on this day
       const values = sessions
-        .map(s => s.tags[tagId])
+        .map(s => s.tags?.[tagId])
         .filter(v => v !== undefined && v !== null && typeof v === 'number')
       
       if (values.length > 0) {
