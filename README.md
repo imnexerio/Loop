@@ -20,19 +20,24 @@ A modern Progressive Web App for tracking daily habits and sessions with custom 
 
 ### 📅 **Analysis Tab**
 - **Interactive Calendar** - Month view with session indicators
-- **Day View** - Grid display of all sessions for selected date
-- **Charts & Insights** - Visualize your habit data
-- **Add Session** - Quick button in day view header
+- **Day View** - Grid display of all sessions for selected date with quick add button
+- **Advanced Charts** - Visualize habit data with Recharts
+  - Line, Bar, and Area chart types
+  - Multiple metrics comparison (up to 8 colors)
+  - Aggregation options (average, sum, min, max)
+  - Flexible date ranges (7, 14, 30 days)
+  - Chart preferences saved to localStorage
+- **Side-by-Side Layout** - Desktop: Calendar + Day View, Mobile: Stacked
 
 ### 💬 **AI Chat Assistant**
 - **Gemini AI Integration** - Powered by Google's Gemini 2.0 Flash
-- Conversation history saved locally
-- Sliding sidebar with chat management
+- **Conversation Management** - Saved locally in localStorage
+- **Sliding Sidebar** - Mobile-friendly with hamburger menu
 - Create multiple conversations
 - Delete old conversations
-- Context-aware responses using your last 7 days
-- Markdown-formatted responses
-- Suggested questions for quick insights
+- **Context-Aware Responses** - Analyzes your last 7 days of session data
+- **Markdown Support** - Formatted AI responses with React Markdown
+- **Suggested Questions** - Quick insights about your habits
 
 ### 🏷️ **Custom Tags System**
 Create custom tracking metrics:
@@ -56,7 +61,7 @@ Create custom tracking metrics:
 - **Theme-aware Scrollbars** - Custom styled scrollbars
 - **Responsive Design** - Works on mobile, tablet, desktop
 - **Bottom Navigation** - Analysis, Add Session, Chat tabs
-- **Top Header** - App branding with hamburger menu (context-aware)
+- **Top Header** - App branding with profile picture and hamburger menu (context-aware for chat)
 
 ## 🚀 Getting Started
 
@@ -223,45 +228,53 @@ Your app will be live at: `https://your-project.web.app`
 ```
 users/{userId}/
   ├── profile/
-  │     ├── name
-  │     ├── email
-  │     ├── photoImageId (reference to image)
-  │     ├── createdAt
+  │     ├── name: string
+  │     ├── email: string
+  │     ├── photoImageId: string (reference to image)
+  │     ├── createdAt: ISO timestamp
   │     └── settings/
-  │           └── llmProvider
+  │           ├── llmProvider: "gemini" | "chatgpt" | "claude"
+  │           └── llmApiKey: string (optional)
   ├── tags/{tagId}/
-  │     ├── name
-  │     ├── type (number|rating|checkbox|text|time)
-  │     ├── config/ {min, max, unit}
-  │     └── createdAt
+  │     ├── id: string (auto-generated)
+  │     ├── name: string
+  │     ├── type: "number" | "rating" | "checkbox" | "text" | "time"
+  │     ├── config/
+  │     │     ├── min: number (optional)
+  │     │     ├── max: number (optional)
+  │     │     └── unit: string (optional)
+  │     └── createdAt: ISO timestamp
   ├── sessions/{YYYY-MM-DD}/
-  │     ├── date
-  │     ├── lastUpdated
+  │     ├── date: string (YYYY-MM-DD)
+  │     ├── lastUpdated: ISO timestamp
   │     └── sessions/{timestamp}/
-  │           ├── description
-  │           ├── tags/ {tagId: value}
-  │           └── imageId (optional)
+  │           ├── timestamp: string (ISO format)
+  │           ├── description: string
+  │           ├── tags: Record<tagId, value>
+  │           └── imageId: string (optional)
   └── images/{imageId}/
-        ├── id
-        ├── type (profile|session)
-        ├── base64 (compressed image data)
-        ├── createdAt
-        ├── size
-        ├── sessionTimestamp (for session images)
-        └── date (for session images)
+        ├── id: string (auto-generated)
+        ├── type: "profile" | "session"
+        ├── base64: string (compressed image data)
+        ├── createdAt: number (Unix timestamp)
+        ├── size: number (bytes)
+        ├── sessionTimestamp: number (optional, for session images)
+        └── date: string (optional, YYYY-MM-DD for session images)
 ```
 
 ## 🛠️ Tech Stack
 
 - **React 18** - UI library with hooks
 - **TypeScript** - Type safety
-- **Vite** - Fast build tool
+- **Vite** - Fast build tool and dev server
 - **Tailwind CSS** - Utility-first styling
 - **Firebase Realtime Database** - Real-time data sync
 - **Firebase Authentication** - User management
-- **Google Gemini AI** - AI chat assistant
-- **Vite PWA Plugin** - Progressive Web App features
+- **Google Gemini AI** - AI chat assistant (Gemini 2.0 Flash)
+- **Recharts** - Responsive charting library for data visualization
 - **React Markdown** - Markdown rendering in chat
+- **React Router DOM** - Client-side routing
+- **Vite PWA Plugin** - Progressive Web App features
 
 ## � Project Structure
 
@@ -270,103 +283,130 @@ Loop/
 ├── src/
 │   ├── components/
 │   │   ├── analysis/
-│   │   │   ├── Calendar.tsx          # Month calendar view
-│   │   │   ├── DayView.tsx           # Grid of session cards
-│   │   │   ├── SessionCard.tsx       # Individual session card
-│   │   │   ├── DayStatsCard.tsx      # Daily score/stats card
-│   │   │   └── Charts.tsx            # Data visualizations
-│   │   ├── AddSessionModal.tsx       # Create session modal
-│   │   ├── AddSessionView.tsx        # Add Session tab view
-│   │   ├── AnalysisTab.tsx           # Analysis tab container
-│   │   ├── ChatTab.tsx               # AI chat interface
-│   │   ├── Dashboard.tsx             # Main app with navigation
-│   │   ├── ImageViewer.tsx           # Full-screen image viewer
-│   │   ├── Login.tsx                 # Login/signup page
-│   │   └── ProfileTab.tsx            # Profile management
+│   │   │   ├── Calendar.tsx          # Interactive month calendar with session indicators
+│   │   │   ├── Charts.tsx            # Recharts visualizations (line/bar/area)
+│   │   │   ├── DayView.tsx           # Grid layout of session cards for selected date
+│   │   │   └── SessionCard.tsx       # Individual session card with tags/images
+│   │   ├── AddSessionModal.tsx       # Create/edit session modal
+│   │   ├── AddSessionView.tsx        # Add Session tab (3rd tab in nav)
+│   │   ├── AnalysisTab.tsx           # Analysis tab with calendar + day view + charts
+│   │   ├── ChatTab.tsx               # AI chat interface with Gemini integration
+│   │   ├── Dashboard.tsx             # Main app shell with bottom nav + top header
+│   │   ├── ImageViewer.tsx           # Full-screen image viewer with zoom/pan
+│   │   ├── Login.tsx                 # Authentication page (login/signup)
+│   │   └── ProfileTab.tsx            # Profile settings and tag management
 │   ├── contexts/
-│   │   └── AuthContext.tsx           # Authentication state
+│   │   └── AuthContext.tsx           # Firebase Authentication context
 │   ├── firebase/
-│   │   └── config.ts                 # Firebase configuration
+│   │   └── config.ts                 # Firebase SDK initialization
 │   ├── services/
-│   │   ├── firebaseService.ts        # Firebase CRUD operations
-│   │   ├── dataManager.ts            # Unified data layer
-│   │   ├── gemini.ts                 # Gemini AI integration
-│   │   └── imageService.ts           # Image compression
+│   │   ├── dataManager.ts            # Unified data layer with caching
+│   │   ├── firebaseService.ts        # Firebase Realtime Database operations
+│   │   ├── gemini.ts                 # Gemini AI API integration
+│   │   └── imageService.ts           # Image compression to 30KB base64
 │   ├── types/
-│   │   └── index.ts                  # TypeScript interfaces
-│   ├── App.tsx                       # Root component
-│   ├── main.tsx                      # Entry point
-│   └── index.css                     # Global styles & scrollbars
-├── public/                           # Static assets & PWA icons
+│   │   └── index.ts                  # TypeScript type definitions
+│   ├── App.tsx                       # Root component with routing
+│   ├── index.css                     # Global styles + custom scrollbars
+│   ├── main.tsx                      # React entry point
+│   └── vite-env.d.ts                 # Vite environment type declarations
+├── public/                           # Static assets (PWA icons, manifest)
 ├── .env                              # Environment variables (gitignored)
-├── .env.example                      # Environment template
+├── .env.example                      # Environment variables template
+├── firebase.json                     # Firebase hosting configuration
 ├── index.html                        # HTML entry point
-├── package.json                      # Dependencies
-├── tailwind.config.js                # Tailwind & color config
+├── package.json                      # Dependencies and scripts
+├── postcss.config.js                 # PostCSS configuration
+├── tailwind.config.js                # Tailwind CSS + custom colors
 ├── tsconfig.json                     # TypeScript configuration
-└── vite.config.ts                    # Vite & PWA configuration
+├── tsconfig.node.json                # TypeScript config for Node scripts
+└── vite.config.ts                    # Vite + PWA plugin configuration
 ```
 
 ## 🎯 **Usage Guide**
 
 ### 1. **First Time Setup**
 - Sign up with email/password or Google
-- Go to Profile tab
-- Create your first tags (e.g., Mood, Energy, Focus)
+- Click profile icon (top-right)
+- Upload profile picture (optional)
+- Create your first tags (e.g., Mood, Energy, Focus, Sleep Hours)
 
 ### 2. **Logging a Session**
-- Click the **+** Floating Action Button
-- Describe what you're doing
-- Fill in your tag values (optional)
+- Go to **Add Session** tab (middle tab in bottom nav)
+- Or click "Add Session" button in Day View header
+- Describe what you're tracking
+- Fill in your tag values (number, rating, checkbox, text, time)
+- Optionally attach an image
 - Session auto-saves as you type!
 
 ### 3. **Viewing History**
-- Go to Analysis tab
+- Go to **Analysis** tab (first tab in bottom nav)
+- **Desktop:** Calendar and Day View side-by-side
+- **Mobile:** Stacked layout
 - Calendar shows green dots for days with sessions
-- Click any date to view that day's sessions
-- See all your logged data with timestamps
+- Click any date to view that day's sessions in grid layout
+- Scroll down to see **Charts** with your habit trends
 
-### 4. **AI Insights**
-- Go to Chat tab
+### 4. **Analyzing Trends**
+- In Analysis tab, scroll to Charts section
+- Select tags to visualize (number, rating, or time tags)
+- Choose chart type: Line, Bar, or Area
+- Pick aggregation: Average, Sum, Min, or Max
+- Adjust date range: 7, 14, or 30 days
+- Compare multiple metrics with different colors
+- Preferences saved automatically
+
+### 5. **AI Insights**
+- Go to **Chat** tab (third tab in bottom nav)
+- Click hamburger menu (mobile) to manage conversations
 - Ask questions about your habits (e.g., "What patterns do you notice?")
 - Get personalized suggestions based on your data
 - Use suggested questions for quick insights
 - AI analyzes your last 7 days of sessions automatically
+- Responses formatted in Markdown
 
 ## 🔧 **Future Enhancements**
 
 - [x] Gemini AI integration for chat ✅
 - [x] Markdown-formatted AI responses ✅
 - [x] Context-aware AI using user data ✅
-- [ ] Data visualization and charts
-- [ ] Weekly/monthly summaries
+- [x] Data visualization with Recharts ✅
+- [x] Multiple chart types (line, bar, area) ✅
+- [x] Chart preferences persistence ✅
+- [ ] Weekly/monthly summaries dashboard
 - [ ] Export data to CSV/JSON
-- [ ] Habit streaks and goals
-- [ ] Reminders and notifications
-- [ ] Data backup and sync
-- [ ] Multiple user profiles
-- [ ] Tag categories and colors
-- [ ] Search and filter sessions
+- [ ] Habit streaks and goal tracking
+- [ ] Push notifications and reminders
+- [ ] Cloud backup and restore
+- [ ] Tag categories and custom colors
+- [ ] Advanced search and filtering
+- [ ] Custom date range selection for charts
+- [ ] Comparison views (week-over-week, month-over-month)
+- [ ] Share insights with others
 
 ## 📝 **Data Flow**
 
-1. User creates **tags** in Profile (e.g., "Mood", "Energy")
-2. User clicks **FAB** to add a session
-3. Modal opens with description textarea and tag inputs
-4. User fills out form and clicks **Save Session**
-5. Data saved to Firestore: `/users/{uid}/logs/{year}/months/{month}/days/{day}`
-6. If offline, queued in IndexedDB and synced when connection returns
-7. Calendar updates with session indicator
-8. Click date to view all sessions for that day
+1. User creates **tags** in Profile (e.g., "Mood", "Energy", "Sleep Hours")
+2. User navigates to **Add Session** tab or clicks "Add Session" in Day View
+3. Modal opens with description textarea and dynamic tag inputs based on tag type
+4. User fills out form (description, tags, optional image)
+5. Session **auto-saves** to Firebase Realtime Database as user types
+6. Data saved to: `/users/{uid}/sessions/{YYYY-MM-DD}/sessions/{timestamp}`
+7. Images compressed to 30KB base64 and stored in: `/users/{uid}/images/{imageId}`
+8. Real-time listeners update UI instantly across all tabs
+9. Calendar shows green dots for days with sessions
+10. Click date to view all sessions in grid layout with Day View
+11. Charts automatically aggregate data for selected tags and date ranges
 
 ## 🌐 **PWA Features**
 
 - ✅ Installable on mobile and desktop
-- ✅ **Full offline support** with IndexedDB
-- ✅ **Background sync** when connection returns
-- ✅ Fast loading with caching
-- ✅ App-like experience
-- ✅ Auto-updates
+- ✅ Service worker with caching strategy
+- ✅ Fast loading with asset caching
+- ✅ App-like experience with native feel
+- ✅ Auto-updates on reload
+- ✅ Manifest with app icons and theme colors
+- ✅ Responsive design for all screen sizes
 
 
 ## 📄 **License**
