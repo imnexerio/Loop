@@ -53,7 +53,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
 
   // Load preferences from localStorage on mount
   useEffect(() => {
-    if (!currentUser || preferencesLoaded) return
+    if (!currentUser || preferencesLoaded || plottableTags.length === 0) return
 
     try {
       const storageKey = `chartPreferences_${currentUser.uid}`
