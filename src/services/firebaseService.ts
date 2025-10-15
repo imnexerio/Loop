@@ -147,7 +147,8 @@ export function subscribeToDayLog(
     const sessions: Session[] = Object.entries(sessionsObj).map(([timestamp, session]) => ({
       timestamp: timestamp, // Keep as string for backward compatibility
       description: (session as FirebaseSession).description,
-      tags: (session as FirebaseSession).tags
+      tags: (session as FirebaseSession).tags,
+      imageId: (session as FirebaseSession).imageId
     }))
     
     // Sort by timestamp (newest first)
