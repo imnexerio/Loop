@@ -47,7 +47,11 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
 
   // Manual save function
   const saveSession = async () => {
-    if (!currentUser || !description.trim()) return
+    // Allow saving if either description exists OR any tags are filled
+    const hasTagValues = Object.keys(tagValues).length > 0 && 
+                         Object.values(tagValues).some(v => v !== null && v !== undefined && v !== '' && v !== false)
+    
+    if (!currentUser || (!description.trim() && !hasTagValues)) return
 
     setSaving(true)
     let imageId: string | undefined = undefined
@@ -109,7 +113,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       // STEP 2: Save session with optional imageId
       const session: any = {
         timestamp: timestamp.toString(),
-        description: description.trim(),
+        description: description.trim() || (Object.keys(tagValues).length > 0 ? 'Tagged entry' : ''),
         tags: tagValues
       }
       
@@ -393,7 +397,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           {/* Description */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              What are you doing? *
+              What are you doing? {tags.length === 0 && '*'}
             </label>
             <textarea
               ref={textareaRef}
@@ -401,7 +405,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
-              placeholder="I am working on..."
+              placeholder={tags.length > 0 ? "Optional - describe what you're doing..." : "I am working on..."}
             />
           </div>
 
@@ -491,7 +495,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           </button>
           <button
             onClick={saveSession}
-            disabled={!description.trim() || saving}
+            disabled={(!description.trim() && Object.keys(tagValues).length === 0) || saving}
             className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {saving ? (
