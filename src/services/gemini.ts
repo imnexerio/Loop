@@ -46,7 +46,7 @@ export function generateHabitContext(
         rating: 'Rating (1-10)',
         checkbox: 'Yes/No',
         text: 'Text',
-        time: 'Time duration'
+        clocktime: 'Clock Time (HH:MM)'
       }[tag.type]
       
       context += `- ${tag.name} (${typeLabel})`
@@ -73,8 +73,8 @@ export function generateHabitContext(
           const tag = tags.find(t => t.id === tagId)
           if (tag) {
             let displayValue = value
-            if (tag.type === 'time' && typeof value === 'number') {
-              displayValue = `${Math.floor(value / 60)}h ${value % 60}m`
+            if (tag.type === 'clocktime' && typeof value === 'object' && 'hour' in value && 'minute' in value) {
+              displayValue = `${String(value.hour).padStart(2, '0')}:${String(value.minute).padStart(2, '0')}`
             } else if (tag.type === 'checkbox') {
               displayValue = value ? '✓' : '✗'
             }

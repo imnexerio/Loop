@@ -1,5 +1,5 @@
 // Tag types
-export type TagType = 'number' | 'text' | 'checkbox' | 'rating' | 'time'
+export type TagType = 'number' | 'text' | 'checkbox' | 'rating' | 'clocktime'
 
 export interface TagConfig {
   min?: number

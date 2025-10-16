@@ -59,8 +59,11 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
         return value ? '✓' : '✗'
       case 'text':
         return value
-      case 'time':
-        return `${value} min`
+      case 'clocktime':
+        if (value && typeof value === 'object' && 'hour' in value && 'minute' in value) {
+          return `${String(value.hour).padStart(2, '0')}:${String(value.minute).padStart(2, '0')}`
+        }
+        return value
       default:
         return value
     }

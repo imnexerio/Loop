@@ -331,19 +331,24 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           </div>
         )
 
-      case 'time':
+      case 'clocktime':
         return (
           <div key={tag.id} className="mb-5">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {tag.name} (minutes)
+              {tag.name}
             </label>
             <input
-              type="number"
-              value={value || ''}
-              onChange={(e) => handleTagChange(tag.id, parseInt(e.target.value) || 0)}
-              min="0"
+              type="time"
+              value={value ? `${String(value.hour).padStart(2, '0')}:${String(value.minute).padStart(2, '0')}` : ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const [hour, minute] = e.target.value.split(':').map(Number)
+                  handleTagChange(tag.id, { hour, minute })
+                } else {
+                  handleTagChange(tag.id, null)
+                }
+              }}
               className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-              placeholder="0"
             />
           </div>
         )
