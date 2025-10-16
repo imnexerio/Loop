@@ -46,7 +46,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
   // Memoize plottable tags
   const plottableTags = useMemo(() => 
     tags.filter(tag => 
-      tag.type === 'number' || tag.type === 'rating' || tag.type === 'time'
+      tag.type === 'number' || tag.type === 'rating'
     ), 
     [tags]
   )

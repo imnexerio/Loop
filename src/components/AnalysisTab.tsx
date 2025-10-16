@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Calendar from './analysis/Calendar'
 import DayView from './analysis/DayView'
 import Charts from './analysis/Charts'
+import ClockCharts from './analysis/ClockCharts'
 import { Tag } from '../types'
 
 interface AnalysisTabProps {
@@ -66,6 +67,9 @@ const AnalysisTab = ({ tags, onAddSession }: AnalysisTabProps) => {
 
         {/* Charts Section - Full Width */}
         <Charts tags={tags} />
+
+        {/* Clock Time Charts Section - Full Width */}
+        <ClockCharts tags={tags} />
       </div>
     </div>
   )
