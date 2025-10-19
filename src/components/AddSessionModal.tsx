@@ -348,19 +348,64 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {tag.name}
             </label>
-            <input
-              type="time"
-              value={value ? `${String(value.hour).padStart(2, '0')}:${String(value.minute).padStart(2, '0')}` : ''}
-              onChange={(e) => {
-                if (e.target.value) {
-                  const [hour, minute] = e.target.value.split(':').map(Number)
-                  handleTagChange(tag.id, { hour, minute })
-                } else {
-                  handleTagChange(tag.id, null)
-                }
-              }}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-            />
+            <div className="flex gap-2 items-center">
+              {/* Hour Selector */}
+              <select
+                value={value?.hour ?? ''}
+                onChange={(e) => {
+                  const hour = e.target.value ? parseInt(e.target.value) : null
+                  if (hour !== null) {
+                    handleTagChange(tag.id, { hour, minute: value?.minute ?? 0 })
+                  } else {
+                    handleTagChange(tag.id, null)
+                  }
+                }}
+                onMouseDown={blurFocusedInput}
+                onTouchStart={blurFocusedInput}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              >
+                <option value="">Hour</option>
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {String(i).padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+              
+              <span className="text-lg font-semibold text-gray-600 dark:text-gray-400">:</span>
+              
+              {/* Minute Selector */}
+              <select
+                value={value?.minute ?? ''}
+                onChange={(e) => {
+                  const minute = e.target.value ? parseInt(e.target.value) : null
+                  if (minute !== null && value?.hour !== undefined) {
+                    handleTagChange(tag.id, { hour: value.hour, minute })
+                  } else if (minute !== null) {
+                    handleTagChange(tag.id, { hour: 0, minute })
+                  }
+                }}
+                onMouseDown={blurFocusedInput}
+                onTouchStart={blurFocusedInput}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              >
+                <option value="">Min</option>
+                {Array.from({ length: 60 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {String(i).padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Display selected time */}
+              {value?.hour !== undefined && value?.minute !== undefined && (
+                <div className="ml-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg min-w-[70px] text-center">
+                  <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                    {String(value.hour).padStart(2, '0')}:{String(value.minute).padStart(2, '0')}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         )
 
