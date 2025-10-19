@@ -18,7 +18,7 @@ export interface Tag {
 // Session types
 export interface Session {
   timestamp: string
-  description: string
+  description?: string // Optional - sessions can have just tags
   tags: Record<string, any> // tagId -> value
   imageId?: string // Optional reference to image in separate storage
 }
@@ -65,6 +65,6 @@ export interface CalendarDate {
 }
 
 export interface SessionFormData {
-  description: string
+  description?: string // Optional - sessions can have just tags
   tags: Record<string, any>
 }

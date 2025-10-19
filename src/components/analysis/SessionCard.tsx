@@ -70,7 +70,7 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
   }
 
   // Check if card has expandable content
-  const hasMoreContent = session.description.length > 120 || (session.tags && Object.keys(session.tags).length > 3)
+  const hasMoreContent = (session.description && session.description.length > 120) || (session.tags && Object.keys(session.tags).length > 3)
 
   return (
     <>
@@ -89,12 +89,14 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
       </div>
 
       {/* Description */}
-      <p 
-        className={`text-sm text-gray-700 dark:text-gray-300 mb-3 ${isExpanded ? '' : 'line-clamp-3'}`}
-        title={!isExpanded && session.description.length > 100 ? session.description : undefined}
-      >
-        {session.description}
-      </p>
+      {session.description && (
+        <p 
+          className={`text-sm text-gray-700 dark:text-gray-300 mb-3 ${isExpanded ? '' : 'line-clamp-3'}`}
+          title={!isExpanded && session.description.length > 100 ? session.description : undefined}
+        >
+          {session.description}
+        </p>
+      )}
 
       {/* Image Thumbnail */}
       {session.imageId && (

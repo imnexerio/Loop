@@ -27,7 +27,7 @@ import { Tag, DayLog, Session, UserProfile, StoredImage } from '../types'
 
 // Internal session type (matches Firebase structure)
 interface FirebaseSession {
-  description: string
+  description?: string // Optional - sessions can have just tags
   tags: Record<string, any>
   imageId?: string
 }
@@ -229,7 +229,10 @@ export async function addSession(
       imageId: 'imageId' in session ? session.imageId : undefined
     }
     
-    // Remove undefined values
+    // Remove undefined values (Firebase doesn't allow undefined)
+    if (!firebaseSession.description) {
+      delete firebaseSession.description
+    }
     if (!firebaseSession.imageId) {
       delete firebaseSession.imageId
     }

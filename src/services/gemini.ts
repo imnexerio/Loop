@@ -66,7 +66,12 @@ export function generateHabitContext(
           hour: '2-digit', 
           minute: '2-digit' 
         })
-        context += `  • ${time}: ${session.description}\n`
+        // Only show description if it exists
+        if (session.description) {
+          context += `  • ${time}: ${session.description}\n`
+        } else {
+          context += `  • ${time}: (no description)\n`
+        }
         
         // Add tag values (Note: imageId is intentionally excluded from context)
         Object.entries(session.tags || {}).forEach(([tagId, value]) => {

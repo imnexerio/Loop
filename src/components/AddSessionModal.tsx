@@ -111,10 +111,17 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       }
       
       // STEP 2: Save session with optional imageId
+      // Clean and validate description
+      const cleanDescription = description.trim().replace(/^['"`]+|['"`]+$/g, '')
+      
       const session: any = {
         timestamp: timestamp.toString(),
-        description: description.trim() || (Object.keys(tagValues).length > 0 ? 'Tagged entry' : ''),
         tags: tagValues
+      }
+      
+      // Only add description if it's not empty
+      if (cleanDescription) {
+        session.description = cleanDescription
       }
       
       // Add imageId if image was successfully uploaded
