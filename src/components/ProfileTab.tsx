@@ -133,7 +133,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
       rating: 'Rating',
       checkbox: 'Yes/No',
       text: 'Text',
-      time: 'Time'
+      clocktime: 'Clock Time'
     }
     return labels[type]
   }
@@ -148,8 +148,8 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
         return '✓'
       case 'text':
         return '📝'
-      case 'time':
-        return '⏱️'
+      case 'clocktime':
+        return '🕐'
       default:
         return '📊'
     }
@@ -257,7 +257,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
                   <option value="rating">Rating (stars)</option>
                   <option value="checkbox">Checkbox (Yes/No)</option>
                   <option value="text">Text</option>
-                  <option value="time">Time (minutes)</option>
+                  <option value="clocktime">Clock Time (HH:MM)</option>
                 </select>
               </div>
 

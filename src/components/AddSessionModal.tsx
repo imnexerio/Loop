@@ -47,7 +47,11 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
 
   // Manual save function
   const saveSession = async () => {
-    if (!currentUser || !description.trim()) return
+    // Allow saving if either description exists OR any tags are filled
+    const hasTagValues = Object.keys(tagValues).length > 0 && 
+                         Object.values(tagValues).some(v => v !== null && v !== undefined && v !== '' && v !== false)
+    
+    if (!currentUser || (!description.trim() && !hasTagValues)) return
 
     setSaving(true)
     let imageId: string | undefined = undefined
@@ -107,10 +111,17 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       }
       
       // STEP 2: Save session with optional imageId
+      // Clean and validate description
+      const cleanDescription = description.trim().replace(/^['"`]+|['"`]+$/g, '')
+      
       const session: any = {
         timestamp: timestamp.toString(),
-        description: description.trim(),
         tags: tagValues
+      }
+      
+      // Only add description if it's not empty
+      if (cleanDescription) {
+        session.description = cleanDescription
       }
       
       // Add imageId if image was successfully uploaded
@@ -331,20 +342,70 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           </div>
         )
 
-      case 'time':
+      case 'clocktime':
         return (
           <div key={tag.id} className="mb-5">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {tag.name} (minutes)
+              {tag.name}
             </label>
-            <input
-              type="number"
-              value={value || ''}
-              onChange={(e) => handleTagChange(tag.id, parseInt(e.target.value) || 0)}
-              min="0"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-              placeholder="0"
-            />
+            <div className="flex gap-2 items-center">
+              {/* Hour Selector */}
+              <select
+                value={value?.hour ?? ''}
+                onChange={(e) => {
+                  const hour = e.target.value ? parseInt(e.target.value) : null
+                  if (hour !== null) {
+                    handleTagChange(tag.id, { hour, minute: value?.minute ?? 0 })
+                  } else {
+                    handleTagChange(tag.id, null)
+                  }
+                }}
+                onMouseDown={blurFocusedInput}
+                onTouchStart={blurFocusedInput}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              >
+                <option value="">Hour</option>
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {String(i).padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+              
+              <span className="text-lg font-semibold text-gray-600 dark:text-gray-400">:</span>
+              
+              {/* Minute Selector */}
+              <select
+                value={value?.minute ?? ''}
+                onChange={(e) => {
+                  const minute = e.target.value ? parseInt(e.target.value) : null
+                  if (minute !== null && value?.hour !== undefined) {
+                    handleTagChange(tag.id, { hour: value.hour, minute })
+                  } else if (minute !== null) {
+                    handleTagChange(tag.id, { hour: 0, minute })
+                  }
+                }}
+                onMouseDown={blurFocusedInput}
+                onTouchStart={blurFocusedInput}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              >
+                <option value="">Min</option>
+                {Array.from({ length: 60 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {String(i).padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Display selected time */}
+              {value?.hour !== undefined && value?.minute !== undefined && (
+                <div className="ml-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg min-w-[70px] text-center">
+                  <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                    {String(value.hour).padStart(2, '0')}:{String(value.minute).padStart(2, '0')}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         )
 
@@ -388,7 +449,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           {/* Description */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              What are you doing? *
+              What are you doing? {tags.length === 0 && '*'}
             </label>
             <textarea
               ref={textareaRef}
@@ -396,7 +457,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
-              placeholder="I am working on..."
+              placeholder={tags.length > 0 ? "Optional - describe what you're doing..." : "I am working on..."}
             />
           </div>
 
@@ -486,7 +547,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           </button>
           <button
             onClick={saveSession}
-            disabled={!description.trim() || saving}
+            disabled={(!description.trim() && Object.keys(tagValues).length === 0) || saving}
             className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {saving ? (

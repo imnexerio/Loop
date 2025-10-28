@@ -46,7 +46,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
   // Memoize plottable tags
   const plottableTags = useMemo(() => 
     tags.filter(tag => 
-      tag.type === 'number' || tag.type === 'rating' || tag.type === 'time'
+      tag.type === 'number' || tag.type === 'rating'
     ), 
     [tags]
   )
@@ -186,8 +186,9 @@ const Charts = memo(({ tags }: ChartsProps) => {
 
   // Format date for display
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return `${date.getMonth() + 1}/${date.getDate()}`
+    // Parse date string manually to avoid timezone issues
+    const [, month, day] = dateStr.split('-')
+    return `${parseInt(month)}/${parseInt(day)}`
   }
 
   // Get tag name by id
