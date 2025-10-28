@@ -186,8 +186,9 @@ const Charts = memo(({ tags }: ChartsProps) => {
 
   // Format date for display
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return `${date.getMonth() + 1}/${date.getDate()}`
+    // Parse date string manually to avoid timezone issues
+    const [, month, day] = dateStr.split('-')
+    return `${parseInt(month)}/${parseInt(day)}`
   }
 
   // Get tag name by id
