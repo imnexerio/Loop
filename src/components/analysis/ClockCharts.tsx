@@ -129,7 +129,10 @@ const ClockCharts = ({ tags }: ClockChartsProps) => {
           const date = new Date(startDate)
           date.setDate(date.getDate() + i)
           const dateStr = date.toISOString().split('T')[0]
-          const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          // Parse date string manually to avoid timezone issues
+          const [year, month, day] = dateStr.split('-')
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const dateDisplay = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}, ${year}`
           
           const dataPoint: ClockTimeDataPoint = {
             date: dateStr,
