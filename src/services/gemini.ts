@@ -1,7 +1,7 @@
 import { Tag, DayLog } from '../types'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent'
 
 interface Message {
   role: 'user' | 'model'
@@ -153,7 +153,7 @@ Once configured, I'll be able to analyze your habits and provide personalized in
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 1024
+        maxOutputTokens: 8192
       }
     }
 
@@ -178,14 +178,27 @@ Once configured, I'll be able to analyze your habits and provide personalized in
       }
     }
 
-    const data: GeminiResponse = await response.json()
-
+    const data: any = await response.json()
+      
     if (data.candidates && data.candidates.length > 0) {
-      const aiResponse = data.candidates[0].content.parts[0].text
-      return aiResponse
-    } else {
-      throw new Error('No response generated')
+      const candidate = data.candidates[0]
+      // Try to extract text from various possible structures
+      if (candidate?.content?.parts && candidate.content.parts.length > 0) {
+        // Find the first part with text
+        for (const part of candidate.content.parts) {
+          if (part.text) {
+            return part.text
+          }
+        }
+      }
+      
+      // Alternative structure check
+      if (candidate?.text) {
+        return candidate.text
+      }
     }
+    
+    throw new Error('No response generated or unexpected response format')
   } catch (error: any) {
     console.error('Error calling Gemini API:', error)
     
