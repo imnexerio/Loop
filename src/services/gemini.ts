@@ -1,7 +1,7 @@
 import { Tag, DayLog } from '../types'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent'
 
 interface Message {
   role: 'user' | 'model'
@@ -16,15 +16,6 @@ interface GeminiRequest {
     topP?: number
     maxOutputTokens?: number
   }
-}
-
-interface GeminiResponse {
-  candidates: {
-    content: {
-      parts: { text: string }[]
-    }
-    finishReason: string
-  }[]
 }
 
 /**
@@ -179,7 +170,7 @@ Once configured, I'll be able to analyze your habits and provide personalized in
     }
 
     const data: any = await response.json()
-      
+
     if (data.candidates && data.candidates.length > 0) {
       const candidate = data.candidates[0]
       // Try to extract text from various possible structures
