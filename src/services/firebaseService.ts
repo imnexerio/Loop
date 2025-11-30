@@ -385,13 +385,16 @@ export async function getMonthDaysWithSessions(
 // ANALYTICS / CHART DATA
 // ============================================
 
+export type AggregationType = 'average' | 'sum' | 'min' | 'max'
+
 /**
  * Get tag data for a date range (for charts)
  */
 export async function getTagDataRange(
   userId: string,
   tagId: string,
-  days: number = 30
+  days: number = 30,
+  aggregationType: AggregationType = 'average'
 ): Promise<{ date: string; value: number | null }[]> {
   try {
     const endDate = new Date()
@@ -437,16 +440,33 @@ export async function getTagDataRange(
         tags: (session as FirebaseSession).tags || {}
       }))
       
-      // Calculate average value for this tag on this day
+      // Calculate aggregated value for this tag on this day
       const values = sessions
         .map(s => s.tags?.[tagId])
-        .filter(v => v !== undefined && v !== null && typeof v === 'number')
+        .filter((v): v is number => v !== undefined && v !== null && typeof v === 'number')
       
       if (values.length > 0) {
-        const avg = values.reduce((sum, val) => sum + val, 0) / values.length
+        let aggregatedValue: number
+        
+        switch (aggregationType) {
+          case 'sum':
+            aggregatedValue = values.reduce((sum, val) => sum + val, 0)
+            break
+          case 'min':
+            aggregatedValue = Math.min(...values)
+            break
+          case 'max':
+            aggregatedValue = Math.max(...values)
+            break
+          case 'average':
+          default:
+            aggregatedValue = values.reduce((sum, val) => sum + val, 0) / values.length
+            break
+        }
+        
         const resultIndex = result.findIndex(r => r.date === date)
         if (resultIndex >= 0) {
-          result[resultIndex].value = Math.round(avg * 100) / 100 // Round to 2 decimals
+          result[resultIndex].value = Math.round(aggregatedValue * 100) / 100 // Round to 2 decimals
         }
       }
     })

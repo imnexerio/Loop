@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, memo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { getChartDataCached } from '../../services/dataManager'
+import { getChartDataCached, AggregationType } from '../../services/dataManager'
 import { Tag } from '../../types'
 import { 
   LineChart, Line, BarChart, Bar, AreaChart, Area,
@@ -12,8 +12,6 @@ interface ChartsProps {
 }
 
 type ChartType = 'line' | 'bar' | 'area'
-type AggregationType = 'average' | 'sum' | 'min' | 'max'
-
 interface ChartPreferences {
   selectedTagIds: string[]
   chartType: ChartType
@@ -118,7 +116,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
       setLoading(true)
       try {
         const dataPromises = selectedTagIds.map(async (tagId) => {
-          const data = await getChartDataCached(currentUser.uid, tagId, dateRange)
+          const data = await getChartDataCached(currentUser.uid, tagId, dateRange, aggregationType)
           return { tagId, data }
         })
 

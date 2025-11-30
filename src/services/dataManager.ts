@@ -23,6 +23,7 @@ export {
   
   // Analytics
   getTagDataRange as getChartDataCached,
+  type AggregationType,
   
   // Profile
   getUserProfile,
