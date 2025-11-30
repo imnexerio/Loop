@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { getDayLogCached, subscribeToDayLog } from '../../services/dataManager'
 import { DayLog, Tag } from '../../types'
 import SessionCard from './SessionCard'
+import { formatDateForDisplay, getDateInTimezone, getCurrentTimezone } from '../../utils/dateUtils'
 
 interface DayViewProps {
   date: string
@@ -16,10 +17,10 @@ const DayView = ({ date, tags, onAddSession }: DayViewProps) => {
   const [dayLog, setDayLog] = useState<DayLog | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Memoize isToday check to avoid recalculating on every render
-  const isToday = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    return date === today
+  // Memoize isToday check to avoid recalculating on every render (user's local timezone)
+  const isTodayDate = useMemo(() => {
+    const todayInUserTz = getDateInTimezone(Date.now(), getCurrentTimezone())
+    return date === todayInUserTz
   }, [date])
 
   useEffect(() => {
@@ -27,7 +28,7 @@ const DayView = ({ date, tags, onAddSession }: DayViewProps) => {
 
     setLoading(true)
 
-    if (isToday) {
+    if (isTodayDate) {
       // Real-time subscription for today's date
       const unsubscribe = subscribeToDayLog(currentUser.uid, date, (log) => {
         setDayLog(log)
@@ -50,16 +51,10 @@ const DayView = ({ date, tags, onAddSession }: DayViewProps) => {
 
       loadDayLog()
     }
-  }, [currentUser, date, isToday])
+  }, [currentUser, date, isTodayDate])
 
   const formatDate = useCallback((dateStr: string) => {
-    const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })
+    return formatDateForDisplay(dateStr)
   }, [])
 
   if (loading) {
@@ -78,11 +73,11 @@ const DayView = ({ date, tags, onAddSession }: DayViewProps) => {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             {formatDate(date)}
           </h2>
-          {isToday && (
+          {isTodayDate && (
             <span className="text-sm text-primary-600 dark:text-primary-400 font-medium">Today</span>
           )}
         </div>
-        {isToday && (
+        {isTodayDate && (
           <button
             onClick={onAddSession}
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
@@ -105,9 +100,9 @@ const DayView = ({ date, tags, onAddSession }: DayViewProps) => {
               </svg>
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {isToday ? 'No sessions logged yet today' : 'No sessions on this day'}
+              {isTodayDate ? 'No sessions logged yet today' : 'No sessions on this day'}
             </p>
-            {isToday && (
+            {isTodayDate && (
               <button
                 onClick={onAddSession}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl transition-colors"

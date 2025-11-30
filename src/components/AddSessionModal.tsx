@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addSessionCached, getTags } from '../services/dataManager'
+import { addSessionCached, getTags, getUserProfile } from '../services/dataManager'
 import { uploadSessionImage, validateImageFile } from '../services/imageService'
-import { Tag } from '../types'
+import { Tag, Location } from '../types'
+import { formatDateShort, getCurrentTimezone, getDateInTimezone } from '../utils/dateUtils'
+import { getCurrentLocation } from '../utils/locationUtils'
 
 interface AddSessionModalProps {
   isOpen: boolean
@@ -20,9 +22,16 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
   const [imagePreview, setImagePreview] = useState<string>('')
   const [tags, setTags] = useState<Tag[]>(initialTags)
   const [loadingTags, setLoadingTags] = useState(false)
+  const [trackLocation, setTrackLocation] = useState(false)
+  const [currentLocation, setCurrentLocation] = useState<Location | null>(null)
+  const [locationLoading, setLocationLoading] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const today = new Date().toISOString().split('T')[0]
+  // Get user's timezone once when component mounts
+  const userTimezone = useMemo(() => getCurrentTimezone(), [])
+  
+  // Get today's date in user's timezone
+  const today = useMemo(() => getDateInTimezone(Date.now(), userTimezone), [userTimezone])
 
   // Fetch fresh tags when modal opens
   useEffect(() => {
@@ -32,6 +41,20 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
         try {
           const freshTags = await getTags(currentUser.uid)
           setTags(freshTags)
+          
+          // Check if location tracking is enabled
+          const profile = await getUserProfile(currentUser.uid)
+          const shouldTrackLocation = profile?.settings?.trackLocation ?? false
+          setTrackLocation(shouldTrackLocation)
+          
+          // Fetch location in BACKGROUND (don't await - don't block the modal)
+          if (shouldTrackLocation) {
+            setLocationLoading(true)
+            getCurrentLocation().then(location => {
+              setCurrentLocation(location)
+              setLocationLoading(false)
+            })
+          }
         } catch (error) {
           console.error('Error fetching tags:', error)
           // Fall back to initialTags if fetch fails
@@ -114,9 +137,19 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       // Clean and validate description
       const cleanDescription = description.trim().replace(/^['"`]+|['"`]+$/g, '')
       
+
+      // Get the date in user's timezone (session belongs to the day in their local time)
+      const dateInUserTimezone = getDateInTimezone(timestamp, userTimezone)
+      
       const session: any = {
         timestamp: timestamp.toString(),
+        timezone: userTimezone,
         tags: tagValues
+      }
+      
+      // Add location if tracking is enabled and we have coordinates
+      if (trackLocation && currentLocation) {
+        session.location = currentLocation
       }
       
       // Only add description if it's not empty
@@ -131,7 +164,8 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
 
       try {
         console.log('[AddSessionModal] Saving session...')
-        await addSessionCached(currentUser.uid, today, session)
+        // Save to the date in user's timezone (so 11 PM in India is saved to today, not tomorrow in UTC)
+        await addSessionCached(currentUser.uid, dateInUserTimezone, session)
         console.log('[AddSessionModal] Session saved successfully')
       } catch (sessionError) {
         console.error('[AddSessionModal] Session save failed:', sessionError)
@@ -218,6 +252,8 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       setSelectedImage(null)
       setImagePreview('')
       setSaving(false) // Reset saving state from previous save
+      setCurrentLocation(null)
+      setLocationLoading(false)
       
       // Focus textarea only once when modal opens (not on every re-render)
       setTimeout(() => {
@@ -426,11 +462,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               Add Session
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {new Date().toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                month: 'short', 
-                day: 'numeric' 
-              })}
+              {formatDateShort(today)}
             </p>
           </div>
           <button
@@ -535,6 +567,27 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               </div>
             )}
           </div>
+
+          {/* Location Indicator (only shown when tracking is enabled) */}
+          {trackLocation && (
+            <div className="mt-4 flex items-center gap-2 text-sm">
+              <span className="text-lg">📍</span>
+              {locationLoading ? (
+                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                  <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  Getting location...
+                </span>
+              ) : currentLocation ? (
+                <span className="text-green-600 dark:text-green-400">
+                  Location captured ({currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)})
+                </span>
+              ) : (
+                <span className="text-amber-600 dark:text-amber-400">
+                  Location unavailable
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

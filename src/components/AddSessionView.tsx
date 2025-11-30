@@ -1,5 +1,6 @@
 import DayView from './analysis/DayView'
 import { Tag } from '../types'
+import { getDateInTimezone, getCurrentTimezone } from '../utils/dateUtils'
 
 interface AddSessionViewProps {
   tags: Tag[]
@@ -7,8 +8,8 @@ interface AddSessionViewProps {
 }
 
 const AddSessionView = ({ tags, onAddSession }: AddSessionViewProps) => {
-  // Always show today's date
-  const today = new Date().toISOString().split('T')[0]
+  // Always show today's date in user's timezone
+  const today = getDateInTimezone(Date.now(), getCurrentTimezone())
 
   return (
     <div className="fixed inset-0 top-16 left-0 right-0 bottom-16 bg-gray-50 dark:bg-gray-900 overflow-y-auto">

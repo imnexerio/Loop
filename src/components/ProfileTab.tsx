@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Tag, TagType } from '../types'
+import { Tag, TagType, UserSettings } from '../types'
 import { createTagCached, deleteTagCached, getUserProfile, updateUserProfile, getImage } from '../services/dataManager'
 import { uploadProfilePicture } from '../services/imageService'
+import { getLocationPermissionStatus, getCurrentLocation } from '../utils/locationUtils'
 
 interface ProfileTabProps {
   tags: Tag[]
@@ -15,6 +16,8 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
   const [showAddTag, setShowAddTag] = useState(false)
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
   const [uploadingPicture, setUploadingPicture] = useState(false)
+  const [settings, setSettings] = useState<UserSettings>({ llmProvider: 'gemini' })
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt')
   const [newTag, setNewTag] = useState({
     name: '',
     type: 'number' as TagType,
@@ -36,6 +39,10 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
             setProfilePicture(image.base64)
           }
         }
+        // Load settings
+        if (profile?.settings) {
+          setSettings(profile.settings)
+        }
       } catch (error) {
         console.error('Error loading profile picture:', error)
       }
@@ -43,6 +50,11 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
 
     loadProfilePicture()
   }, [currentUser])
+
+  // Check location permission status
+  useEffect(() => {
+    getLocationPermissionStatus().then(setLocationPermission)
+  }, [])
 
   const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -82,6 +94,55 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
       await logout()
     } catch (error) {
       console.error('Logout error:', error)
+    }
+  }
+
+  const handleToggleLocationTracking = async () => {
+    if (!currentUser) return
+    
+    const newValue = !settings.trackLocation
+    
+    // If enabling, request permission immediately
+    if (newValue) {
+      const permission = await getLocationPermissionStatus()
+      if (permission === 'unsupported') {
+        alert('Location tracking is not supported in your browser.')
+        return
+      }
+      
+      // Request location to trigger permission prompt
+      const location = await getCurrentLocation()
+      
+      // Check permission again after the prompt
+      const newPermission = await getLocationPermissionStatus()
+      setLocationPermission(newPermission)
+      
+      if (!location && newPermission === 'denied') {
+        alert('Location permission was denied. Please enable it in your browser settings to use this feature.')
+        return
+      }
+      
+      if (!location) {
+        // Permission might be granted but location unavailable (e.g., no GPS)
+        const proceed = window.confirm(
+          'Could not get your current location. This might be due to:\n\n' +
+          '• No GPS signal\n' +
+          '• Location services disabled on your device\n\n' +
+          'Do you still want to enable location tracking?'
+        )
+        if (!proceed) return
+      }
+    }
+    
+    const newSettings = { ...settings, trackLocation: newValue }
+    setSettings(newSettings)
+    
+    try {
+      await updateUserProfile(currentUser.uid, { settings: newSettings })
+    } catch (error) {
+      console.error('Error updating location setting:', error)
+      // Revert on error
+      setSettings(settings)
     }
   }
 
@@ -207,6 +268,55 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {currentUser?.email}
           </p>
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-6">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          Settings
+        </h3>
+        
+        {/* Location Tracking Toggle */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📍</span>
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">
+                Track Location
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Save GPS coordinates with each session
+              </p>
+              {locationPermission === 'denied' && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Permission denied - enable in browser settings
+                </p>
+              )}
+              {locationPermission === 'unsupported' && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Not supported in this browser
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={handleToggleLocationTracking}
+            disabled={locationPermission === 'unsupported'}
+            className={`relative w-14 h-8 rounded-full transition-colors ${
+              settings.trackLocation
+                ? 'bg-primary-600'
+                : 'bg-gray-300 dark:bg-gray-600'
+            } ${locationPermission === 'unsupported' ? 'opacity-50 cursor-not-allowed' : ''}`}
+            role="switch"
+            aria-checked={settings.trackLocation}
+          >
+            <span
+              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
+                settings.trackLocation ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
 

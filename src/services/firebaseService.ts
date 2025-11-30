@@ -20,6 +20,7 @@ import {
 } from 'firebase/database'
 import { database } from '../firebase/config'
 import { Tag, DayLog, Session, UserProfile, StoredImage } from '../types'
+import { getDateStringUTC } from '../utils/dateUtils'
 
 // ============================================
 // TYPES
@@ -30,6 +31,8 @@ interface FirebaseSession {
   description?: string // Optional - sessions can have just tags
   tags: Record<string, any>
   imageId?: string
+  timezone?: string // IANA timezone where session was logged
+  location?: { lat: number; lng: number } // GPS coordinates
 }
 
 // ============================================
@@ -146,6 +149,8 @@ export function subscribeToDayLog(
     // Convert sessions object to array with timestamps
     const sessions: Session[] = Object.entries(sessionsObj).map(([timestamp, session]) => ({
       timestamp: timestamp, // Keep as string for backward compatibility
+      timezone: (session as FirebaseSession).timezone,
+      location: (session as FirebaseSession).location,
       description: (session as FirebaseSession).description,
       tags: (session as FirebaseSession).tags,
       imageId: (session as FirebaseSession).imageId
@@ -187,6 +192,8 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog | 
     // Convert sessions object to array
     const sessions: Session[] = Object.entries(sessionsObj).map(([timestamp, session]) => ({
       timestamp: timestamp,
+      timezone: (session as FirebaseSession).timezone,
+      location: (session as FirebaseSession).location,
       description: (session as FirebaseSession).description,
       tags: (session as FirebaseSession).tags,
       imageId: (session as FirebaseSession).imageId
@@ -226,7 +233,9 @@ export async function addSession(
     const firebaseSession: FirebaseSession = {
       description: session.description,
       tags: session.tags,
-      imageId: 'imageId' in session ? session.imageId : undefined
+      imageId: 'imageId' in session ? session.imageId : undefined,
+      timezone: 'timezone' in session ? session.timezone : undefined,
+      location: 'location' in session ? session.location : undefined
     }
     
     // Remove undefined values (Firebase doesn't allow undefined)
@@ -235,6 +244,12 @@ export async function addSession(
     }
     if (!firebaseSession.imageId) {
       delete firebaseSession.imageId
+    }
+    if (!firebaseSession.timezone) {
+      delete firebaseSession.timezone
+    }
+    if (!firebaseSession.location) {
+      delete firebaseSession.location
     }
     
     await set(sessionRef, firebaseSession)
@@ -381,11 +396,11 @@ export async function getTagDataRange(
   try {
     const endDate = new Date()
     const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days + 1)
+    startDate.setUTCDate(startDate.getUTCDate() - days + 1)
     
-    // Format dates as YYYY-MM-DD
-    const startDateStr = startDate.toISOString().split('T')[0]
-    const endDateStr = endDate.toISOString().split('T')[0]
+    // Format dates as YYYY-MM-DD (UTC)
+    const startDateStr = getDateStringUTC(startDate)
+    const endDateStr = getDateStringUTC(endDate)
     
     const sessionsRef = ref(database, `users/${userId}/sessions`)
     const rangeQuery = query(
@@ -401,8 +416,8 @@ export async function getTagDataRange(
     const result: { date: string; value: number | null }[] = []
     for (let i = 0; i < days; i++) {
       const date = new Date(startDate)
-      date.setDate(date.getDate() + i)
-      const dateStr = date.toISOString().split('T')[0]
+      date.setUTCDate(date.getUTCDate() + i)
+      const dateStr = getDateStringUTC(date)
       result.push({ date: dateStr, value: null })
     }
     
@@ -417,6 +432,7 @@ export async function getTagDataRange(
       const sessionsObj = dayData.sessions || {}
       const sessions: Session[] = Object.entries(sessionsObj).map(([timestamp, session]) => ({
         timestamp: timestamp,
+        timezone: (session as FirebaseSession).timezone,
         description: (session as FirebaseSession).description,
         tags: (session as FirebaseSession).tags || {}
       }))

@@ -4,6 +4,7 @@ import { getDayLogCached } from '../services/dataManager'
 import { sendToGemini, generateHabitContext } from '../services/gemini'
 import { Tag, DayLog } from '../types'
 import ReactMarkdown from 'react-markdown'
+import { getDateStringUTC, formatTimestampRelative } from '../utils/dateUtils'
 
 interface ChatTabProps {
   tags: Tag[]
@@ -155,11 +156,11 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
       const logs: DayLog[] = []
       const today = new Date()
       
-      // Get last 7 days of logs
+      // Get last 7 days of logs (UTC)
       for (let i = 0; i < 7; i++) {
         const date = new Date(today)
-        date.setDate(date.getDate() - i)
-        const dateStr = date.toISOString().split('T')[0]
+        date.setUTCDate(date.getUTCDate() - i)
+        const dateStr = getDateStringUTC(date)
         
         try {
           const log = await getDayLogCached(currentUser.uid, dateStr)
@@ -276,22 +277,6 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
     setInput(question)
   }
 
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    } else if (diffInHours < 48) {
-      return 'Yesterday'
-    } else if (diffInHours < 168) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' })
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }
-  }
-
   return (
     <div className="fixed inset-0 top-16 left-0 right-0 bottom-16 bg-white dark:bg-gray-900 flex overflow-hidden">
       {/* Overlay for mobile when sidebar is open */}
@@ -363,7 +348,7 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
                     {chat.title}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {formatTimestamp(chat.lastMessageAt)} • {chat.messages.length - 1} msgs
+                    {formatTimestampRelative(chat.lastMessageAt)} • {chat.messages.length - 1} msgs
                   </p>
                 </div>
                 <div

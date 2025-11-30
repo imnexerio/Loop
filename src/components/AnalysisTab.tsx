@@ -4,6 +4,7 @@ import DayView from './analysis/DayView'
 import Charts from './analysis/Charts'
 import ClockCharts from './analysis/ClockCharts'
 import { Tag } from '../types'
+import { getDateInTimezone, getCurrentTimezone } from '../utils/dateUtils'
 
 interface AnalysisTabProps {
   tags: Tag[]
@@ -11,8 +12,8 @@ interface AnalysisTabProps {
 }
 
 const AnalysisTab = ({ tags, onAddSession }: AnalysisTabProps) => {
-  // Initialize with today's date
-  const today = new Date().toISOString().split('T')[0]
+  // Initialize with today's date in user's timezone
+  const today = getDateInTimezone(Date.now(), getCurrentTimezone())
   const [selectedDate, setSelectedDate] = useState<string | null>(today)
 
   // Auto-select today's date on mount

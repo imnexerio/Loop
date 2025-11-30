@@ -1,4 +1,5 @@
 import { Tag, DayLog } from '../types'
+import { formatTimeInTimezone } from '../utils/dateUtils'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent'
@@ -53,10 +54,7 @@ export function generateHabitContext(
     recentLogs.forEach(log => {
       context += `\n📅 ${log.date}:\n`
       log.sessions.forEach(session => {
-        const time = new Date(session.timestamp).toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        })
+        const time = formatTimeInTimezone(session.timestamp, session.timezone)
         // Only show description if it exists
         if (session.description) {
           context += `  • ${time}: ${session.description}\n`

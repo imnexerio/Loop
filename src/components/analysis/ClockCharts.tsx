@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import { ref, get, query, orderByKey, startAt, endAt } from 'firebase/database'
 import { database } from '../../firebase/config'
+import { getDateStringUTC, getMonthNameShort } from '../../utils/dateUtils'
 
 interface ClockChartsProps {
   tags: Tag[]
@@ -108,10 +109,10 @@ const ClockCharts = ({ tags }: ClockChartsProps) => {
       try {
         const endDate = new Date()
         const startDate = new Date()
-        startDate.setDate(startDate.getDate() - dateRange + 1)
+        startDate.setUTCDate(startDate.getUTCDate() - dateRange + 1)
         
-        const startDateStr = startDate.toISOString().split('T')[0]
-        const endDateStr = endDate.toISOString().split('T')[0]
+        const startDateStr = getDateStringUTC(startDate)
+        const endDateStr = getDateStringUTC(endDate)
         
         const sessionsRef = ref(database, `users/${currentUser.uid}/sessions`)
         const rangeQuery = query(
@@ -127,12 +128,11 @@ const ClockCharts = ({ tags }: ClockChartsProps) => {
         const dataPoints: ClockTimeDataPoint[] = []
         for (let i = 0; i < dateRange; i++) {
           const date = new Date(startDate)
-          date.setDate(date.getDate() + i)
-          const dateStr = date.toISOString().split('T')[0]
-          // Parse date string manually to avoid timezone issues
+          date.setUTCDate(date.getUTCDate() + i)
+          const dateStr = getDateStringUTC(date)
+          // Parse date string for display
           const [year, month, day] = dateStr.split('-')
-          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-          const dateDisplay = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}, ${year}`
+          const dateDisplay = `${getMonthNameShort(parseInt(month) - 1)} ${parseInt(day)}, ${year}`
           
           const dataPoint: ClockTimeDataPoint = {
             date: dateStr,

@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getMonthDaysWithSessionsCached } from '../../services/dataManager'
+import { 
+  getFirstDayOfMonthUTC, 
+  getDaysInMonthUTC,
+  getMonthName,
+  getDateInTimezone,
+  getCurrentTimezone
+} from '../../utils/dateUtils'
 
 interface CalendarProps {
   onDateSelect: (date: string) => void
@@ -9,39 +16,39 @@ interface CalendarProps {
 
 const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
   const { currentUser } = useAuth()
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [daysWithSessions, setDaysWithSessions] = useState<Set<string>>(new Set())
-
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
   
-  // Get today's date for comparison
-  const today = useMemo(() => {
-    const now = new Date()
-    // Reset time to midnight for accurate date comparison
-    now.setHours(0, 0, 0, 0)
-    return now
-  }, []) // Only calculate once per component mount
+  // Get today's date in user's local timezone
+  const todayStr = useMemo(() => getDateInTimezone(Date.now(), getCurrentTimezone()), [])
+  
+  // Parse today's date to get initial year/month (user's local timezone)
+  const [todayYear, todayMonth] = useMemo(() => {
+    const [y, m] = todayStr.split('-').map(Number)
+    return [y, m - 1] // month is 0-indexed
+  }, [todayStr])
+  
+  const [currentYear, setCurrentYear] = useState(todayYear)
+  const [currentMonth, setCurrentMonth] = useState(todayMonth)
+  const [daysWithSessions, setDaysWithSessions] = useState<Set<string>>(new Set())
 
   // Load days with sessions for current month
   useEffect(() => {
     if (!currentUser) return
 
     const loadSessionDays = async () => {
-      const yearStr = year.toString()
-      const monthStr = (month + 1).toString().padStart(2, '0')
+      const yearStr = currentYear.toString()
+      const monthStr = (currentMonth + 1).toString().padStart(2, '0')
       
       const days = await getMonthDaysWithSessionsCached(currentUser.uid, yearStr, monthStr)
       setDaysWithSessions(new Set(days))
     }
 
     loadSessionDays()
-  }, [currentUser, year, month])
+  }, [currentUser, currentYear, currentMonth])
 
-  // Get first day of month and total days
-  const firstDayOfMonth = new Date(year, month, 1).getDay()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const daysInPrevMonth = new Date(year, month, 0).getDate()
+  // Get calendar layout values using UTC
+  const firstDayOfMonth = getFirstDayOfMonthUTC(currentYear, currentMonth)
+  const daysInMonth = getDaysInMonthUTC(currentYear, currentMonth)
+  const daysInPrevMonth = getDaysInMonthUTC(currentYear, currentMonth - 1)
 
   // Memoize calendar days calculation to avoid recalculating on every render
   const calendarDays = useMemo(() => {
@@ -66,38 +73,42 @@ const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
     return days
   }, [firstDayOfMonth, daysInMonth, daysInPrevMonth])
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
-
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1))
+    if (currentMonth === 0) {
+      setCurrentYear(currentYear - 1)
+      setCurrentMonth(11)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
   }
 
   const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1))
+    if (currentMonth === 11) {
+      setCurrentYear(currentYear + 1)
+      setCurrentMonth(0)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
   }
 
   const handleDateClick = (day: number) => {
     if (day < 0) return // Don't allow clicking prev/next month days
     
-    const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
     onDateSelect(dateStr)
   }
 
   const isToday = (day: number) => {
-    return day > 0 && 
-           day === today.getDate() && 
-           month === today.getMonth() && 
-           year === today.getFullYear()
+    if (day < 0) return false
+    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+    return dateStr === todayStr
   }
 
   const isSelected = (day: number) => {
     if (!selectedDate || day < 0) return false
-    const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
     return dateStr === selectedDate
   }
 
@@ -112,7 +123,7 @@ const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
       {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-          {monthNames[month]} {year}
+          {getMonthName(currentMonth)} {currentYear}
         </h2>
         <div className="flex gap-2">
           <button

@@ -15,9 +15,17 @@ export interface Tag {
   createdAt: string
 }
 
+// Location type for GPS coordinates
+export interface Location {
+  lat: number
+  lng: number
+}
+
 // Session types
 export interface Session {
   timestamp: string
+  timezone?: string // IANA timezone e.g., "Asia/Kolkata" - where session was logged
+  location?: Location // GPS coordinates where session was logged
   description?: string // Optional - sessions can have just tags
   tags: Record<string, any> // tagId -> value
   imageId?: string // Optional reference to image in separate storage
@@ -33,6 +41,7 @@ export interface DayLog {
 export interface UserSettings {
   llmProvider: 'gemini' | 'chatgpt' | 'claude'
   llmApiKey?: string
+  trackLocation?: boolean // Opt-in GPS tracking for sessions
 }
 
 export interface UserProfile {

@@ -3,6 +3,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { Session, Tag } from '../../types'
 import { getImage } from '../../services/dataManager'
 import ImageViewer from '../ImageViewer'
+import { formatTimeInTimezone, getTimezoneAbbreviation } from '../../utils/dateUtils'
+import { formatLocationShort, getGoogleMapsUrl } from '../../utils/locationUtils'
 
 interface SessionCardProps {
   session: Session
@@ -36,14 +38,6 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
 
     loadImage()
   }, [currentUser, session.imageId])
-  const formatTime = (timestamp: string) => {
-    const d = new Date(parseInt(timestamp))
-    return d.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true
-    })
-  }
 
   const getTagById = (tagId: string) => {
     return tags.find(t => t.id === tagId)
@@ -83,9 +77,30 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
-            {formatTime(session.timestamp)}
+            {formatTimeInTimezone(session.timestamp, session.timezone)}
+            {session.timezone && (
+              <span className="ml-1 text-[10px] font-normal opacity-70">
+                {getTimezoneAbbreviation(session.timezone, parseInt(session.timestamp))}
+              </span>
+            )}
           </span>
         </div>
+        
+        {/* Location Badge */}
+        {session.location && (
+          <a
+            href={getGoogleMapsUrl(session.location)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+            title={`Open in Google Maps: ${formatLocationShort(session.location)}`}
+          >
+            <span className="text-xs">📍</span>
+            <span className="text-xs text-blue-600 dark:text-blue-400">
+              {formatLocationShort(session.location)}
+            </span>
+          </a>
+        )}
       </div>
 
       {/* Description */}
@@ -181,7 +196,7 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
       <ImageViewer
         imageUrl={imageUrl}
         onClose={() => setShowImageViewer(false)}
-        title={`Session at ${formatTime(session.timestamp)}`}
+        title={`Session at ${formatTimeInTimezone(session.timestamp, session.timezone)}`}
       />
     )}
     </>
