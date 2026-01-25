@@ -24,7 +24,9 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
   const [audioLoading, setAudioLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackTime, setPlaybackTime] = useState(0)
+  const [isSeeking, setIsSeeking] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const progressBarRef = useRef<HTMLDivElement | null>(null)
 
   // Load image if session has imageId
   useEffect(() => {
@@ -81,7 +83,7 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
   }
 
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
+    if (audioRef.current && !isSeeking) {
       setPlaybackTime(audioRef.current.currentTime)
     }
   }
@@ -90,6 +92,66 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
     setIsPlaying(false)
     setPlaybackTime(0)
   }
+
+  // Calculate seek position from mouse/touch event
+  const calculateSeekPosition = (clientX: number): number => {
+    if (!progressBarRef.current || audioDuration === 0) return 0
+    
+    const rect = progressBarRef.current.getBoundingClientRect()
+    const clickX = Math.max(0, Math.min(clientX - rect.left, rect.width))
+    const percentage = clickX / rect.width
+    return percentage * audioDuration
+  }
+
+  // Start seeking (mouse down or touch start)
+  const handleSeekStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsSeeking(true)
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const newTime = calculateSeekPosition(clientX)
+    setPlaybackTime(newTime)
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime
+    }
+  }
+
+  // Add/remove global mouse/touch listeners for dragging
+  useEffect(() => {
+    if (!isSeeking) return
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      if (!progressBarRef.current || audioDuration === 0) return
+      
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const rect = progressBarRef.current.getBoundingClientRect()
+      const clickX = Math.max(0, Math.min(clientX - rect.left, rect.width))
+      const percentage = clickX / rect.width
+      const newTime = percentage * audioDuration
+      
+      setPlaybackTime(newTime)
+      if (audioRef.current) {
+        audioRef.current.currentTime = newTime
+      }
+    }
+
+    const handleEnd = () => {
+      setIsSeeking(false)
+    }
+
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleEnd)
+    window.addEventListener('touchmove', handleMove, { passive: false })
+    window.addEventListener('touchend', handleEnd)
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleEnd)
+      window.removeEventListener('touchmove', handleMove)
+      window.removeEventListener('touchend', handleEnd)
+    }
+  }, [isSeeking, audioDuration])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -218,6 +280,14 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={handleAudioEnded}
+                onLoadedMetadata={(e) => {
+                  // Update duration from actual audio if available
+                  const actualDuration = (e.target as HTMLAudioElement).duration
+                  if (actualDuration && isFinite(actualDuration)) {
+                    setAudioDuration(actualDuration)
+                  }
+                }}
+                preload="metadata"
               />
               
               {/* Play/Pause Button */}
@@ -241,10 +311,21 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
               {/* Progress Bar */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-purple-200 dark:bg-purple-800 rounded-full overflow-hidden">
+                  <div 
+                    ref={progressBarRef}
+                    className={`relative flex-1 h-4 bg-purple-200 dark:bg-purple-800 rounded-full overflow-visible cursor-pointer hover:bg-purple-300 dark:hover:bg-purple-700 transition-colors select-none ${isSeeking ? 'bg-purple-300 dark:bg-purple-700' : ''}`}
+                    onMouseDown={handleSeekStart}
+                    onTouchStart={handleSeekStart}
+                  >
+                    {/* Progress fill */}
                     <div 
-                      className="h-full bg-purple-600 dark:bg-purple-400 rounded-full transition-all"
+                      className="h-full bg-purple-600 dark:bg-purple-400 rounded-full pointer-events-none"
                       style={{ width: `${audioDuration > 0 ? (playbackTime / audioDuration) * 100 : 0}%` }}
+                    />
+                    {/* Seek handle/thumb */}
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-purple-600 dark:bg-purple-400 rounded-full shadow-md pointer-events-none border-2 border-white dark:border-gray-800"
+                      style={{ left: `calc(${audioDuration > 0 ? (playbackTime / audioDuration) * 100 : 0}% - 8px)` }}
                     />
                   </div>
                 </div>

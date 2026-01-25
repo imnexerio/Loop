@@ -23,7 +23,7 @@ interface UseVoiceRecorderReturn {
   audioBlob: Blob | null
   audioDuration: number
   startRecording: () => void
-  stopRecording: () => void
+  stopRecording: () => Promise<{ blob: Blob | null; duration: number }>
   clearTranscript: () => void
   clearAudio: () => void
 }
@@ -52,6 +52,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
   const audioChunksRef = useRef<Blob[]>([])
   const startTimeRef = useRef<number>(0)
   const streamRef = useRef<MediaStream | null>(null)
+  const stopResolveRef = useRef<((result: { blob: Blob | null; duration: number }) => void) | null>(null)
   
   const isSupported = !!SpeechRecognition && !!window.MediaRecorder
 
@@ -90,9 +91,10 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
       if (finalText) {
         setTranscript(prev => {
           const newText = prev ? prev + ' ' + finalText : finalText
-          onTranscript?.(newText, true)
           return newText
         })
+        // Send only the NEW final text, not the cumulative transcript
+        onTranscript?.(finalText, true)
         setInterimTranscript('')
       } else {
         setInterimTranscript(interimText)
@@ -154,12 +156,19 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
       const duration = (Date.now() - startTimeRef.current) / 1000
       setAudioDuration(duration)
       
+      let blob: Blob | null = null
       if (audioChunksRef.current.length > 0) {
-        const blob = new Blob(audioChunksRef.current, { 
+        blob = new Blob(audioChunksRef.current, { 
           type: mimeType || 'audio/webm' 
         })
         setAudioBlob(blob)
         console.log(`[VoiceRecorder] Audio captured: ${(blob.size / 1024).toFixed(1)} KB, ${duration.toFixed(1)}s`)
+      }
+      
+      // Resolve the stop promise if waiting
+      if (stopResolveRef.current) {
+        stopResolveRef.current({ blob, duration })
+        stopResolveRef.current = null
       }
     }
     
@@ -215,26 +224,32 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
     }
   }, [initRecognition, initMediaRecorder])
 
-  // Stop recording
-  const stopRecording = useCallback(() => {
-    // Stop speech recognition
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-    }
-    
-    // Stop media recorder
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
-    
-    // Stop all tracks in the stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-    }
-    
-    setIsRecording(false)
-    console.log('[VoiceRecorder] Recording stopped')
+  // Stop recording - returns a promise that resolves with the audio blob
+  const stopRecording = useCallback((): Promise<{ blob: Blob | null; duration: number }> => {
+    return new Promise((resolve) => {
+      // Stop speech recognition
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+      
+      // If media recorder is active, wait for onstop to resolve
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        stopResolveRef.current = resolve
+        mediaRecorderRef.current.stop()
+      } else {
+        // No recording active, resolve immediately
+        resolve({ blob: null, duration: 0 })
+      }
+      
+      // Stop all tracks in the stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+      
+      setIsRecording(false)
+      console.log('[VoiceRecorder] Recording stopped')
+    })
   }, [])
 
   // Clear transcript
