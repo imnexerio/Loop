@@ -19,7 +19,7 @@ import {
   type Unsubscribe
 } from 'firebase/database'
 import { database } from '../firebase/config'
-import { Tag, DayLog, Session, UserProfile, StoredImage, StoredAudio } from '../types'
+import { Tag, DayLog, Session, UserProfile, StoredImage, StoredAudio, AudioChunk } from '../types'
 import { getDateStringUTC } from '../utils/dateUtils'
 
 // ============================================
@@ -762,14 +762,16 @@ export function subscribeToImages(
 /**
  * Save audio recording to storage
  * Returns the audio ID
+ * If audioId is provided, updates existing record
  */
 export async function saveAudio(
   userId: string,
-  audioData: Omit<StoredAudio, 'id'>
+  audioData: Omit<StoredAudio, 'id'>,
+  existingAudioId?: string
 ): Promise<string> {
   try {
-    // Generate unique audio ID
-    const audioId = `audio_${audioData.createdAt}_${Math.random().toString(36).substr(2, 9)}`
+    // Use existing ID or generate new one
+    const audioId = existingAudioId || `audio_${audioData.createdAt}_${Math.random().toString(36).substr(2, 9)}`
     const audioRef = ref(database, `users/${userId}/audio/${audioId}`)
     
     const audio: StoredAudio = {
@@ -817,10 +819,104 @@ export async function deleteAudio(
   audioId: string
 ): Promise<void> {
   try {
+    // First get audio to find chunks
+    const audio = await getAudio(userId, audioId)
+    
+    // Delete all chunks
+    if (audio?.chunkIds && audio.chunkIds.length > 0) {
+      for (const chunkId of audio.chunkIds) {
+        const chunkRef = ref(database, `users/${userId}/audioChunks/${chunkId}`)
+        await remove(chunkRef)
+      }
+      console.log(`[FirebaseService] Deleted ${audio.chunkIds.length} audio chunk(s)`)
+    }
+    
+    // Delete the audio record
     const audioRef = ref(database, `users/${userId}/audio/${audioId}`)
     await remove(audioRef)
   } catch (error) {
     console.error('Error deleting audio:', error)
+    throw error
+  }
+}
+
+// ============================================
+// AUDIO CHUNK OPERATIONS
+// ============================================
+
+/**
+ * Save an audio chunk
+ * Returns the chunk ID
+ */
+export async function saveAudioChunk(
+  userId: string,
+  chunkData: Omit<AudioChunk, 'id'>
+): Promise<string> {
+  try {
+    const chunkId = `chunk_${chunkData.audioId}_${chunkData.chunkIndex}_${Math.random().toString(36).substr(2, 9)}`
+    const chunkRef = ref(database, `users/${userId}/audioChunks/${chunkId}`)
+    
+    const chunk: AudioChunk = {
+      id: chunkId,
+      ...chunkData
+    }
+    
+    await set(chunkRef, chunk)
+    
+    return chunkId
+  } catch (error) {
+    console.error('Error saving audio chunk:', error)
+    throw error
+  }
+}
+
+/**
+ * Get multiple audio chunks by their IDs
+ * Returns chunks in the order they were requested
+ */
+export async function getAudioChunks(
+  userId: string,
+  chunkIds: string[]
+): Promise<AudioChunk[]> {
+  try {
+    const chunks: AudioChunk[] = []
+    
+    for (const chunkId of chunkIds) {
+      const chunkRef = ref(database, `users/${userId}/audioChunks/${chunkId}`)
+      const snapshot = await get(chunkRef)
+      
+      if (snapshot.exists()) {
+        chunks.push(snapshot.val() as AudioChunk)
+      } else {
+        console.warn(`[FirebaseService] Audio chunk not found: ${chunkId}`)
+      }
+    }
+    
+    return chunks
+  } catch (error) {
+    console.error('Error getting audio chunks:', error)
+    throw error
+  }
+}
+
+/**
+ * Get a single audio chunk by ID
+ */
+export async function getAudioChunk(
+  userId: string,
+  chunkId: string
+): Promise<AudioChunk | null> {
+  try {
+    const chunkRef = ref(database, `users/${userId}/audioChunks/${chunkId}`)
+    const snapshot = await get(chunkRef)
+    
+    if (!snapshot.exists()) {
+      return null
+    }
+    
+    return snapshot.val() as AudioChunk
+  } catch (error) {
+    console.error('Error getting audio chunk:', error)
     throw error
   }
 }
