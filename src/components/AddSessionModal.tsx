@@ -116,11 +116,12 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       stopRecording()
     }
     
-    // Allow saving if either description exists OR any tags are filled
+    // Allow saving if any content exists: description, tags, image, or audio
     const hasTagValues = Object.keys(tagValues).length > 0 && 
                          Object.values(tagValues).some(v => v !== null && v !== undefined && v !== '' && v !== false)
+    const hasContent = description.trim() || hasTagValues || selectedImage || audioBlob
     
-    if (!currentUser || (!description.trim() && !hasTagValues)) return
+    if (!currentUser || !hasContent) return
 
     setSaving(true)
     let imageId: string | undefined = undefined
@@ -784,7 +785,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           </button>
           <button
             onClick={saveSession}
-            disabled={(!description.trim() && Object.keys(tagValues).length === 0) || saving}
+            disabled={(!description.trim() && Object.keys(tagValues).length === 0 && !selectedImage && !audioBlob) || saving}
             className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {saving ? (

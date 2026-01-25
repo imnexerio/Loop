@@ -10,182 +10,122 @@ import { saveImage } from './dataManager'
 /**
  * Compress image file to Base64 string
  * Iteratively reduces quality until size is under maxSizeKB
- * Similar to Flutter's FlutterImageCompress approach
  * 
  * @param file - Image file from input
- * @param maxSizeKB - Maximum size in kilobytes (default: 30 KB)
- * @param initialQuality - Starting quality (default: 100)
+ * @param maxSizeKB - Maximum size in kilobytes (default: 100 KB)
+ * @param initialQuality - Starting quality (default: 92)
  * @returns Base64 string (data:image/jpeg;base64,...)
  */
 export async function compressImageToBase64(
   file: File,
-  maxSizeKB: number = 30,
-  initialQuality: number = 100
+  maxSizeKB: number = 100,
+  initialQuality: number = 92
 ): Promise<string> {
   const maxSizeBytes = maxSizeKB * 1024
   
-  return new Promise((resolve, reject) => {
-    const img = new Image()
+  // Step 1: Read file as data URL
+  const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
-    
     reader.onload = (e) => {
       if (!e.target?.result) {
         reject(new Error('Failed to read image file: no data returned'))
         return
       }
-      img.src = e.target.result as string
+      resolve(e.target.result as string)
     }
-    
-    img.onload = async () => {
+    reader.onerror = () => reject(new Error('Failed to read file from device storage.'))
+    reader.readAsDataURL(file)
+  })
+  
+  // Step 2: Load image and wait for it to be fully decoded
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = async () => {
       try {
-        // Detect device type for adaptive compression
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        
-        console.log(`[ImageService] Original image: ${img.width}x${img.height}, Device: ${isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop'}`)
-        
-        let quality = initialQuality
-        let base64String = ''
-        let sizeInBytes = Infinity
-        let iterations = 0
-        const maxIterations = 20 // Allow more iterations for difficult images
-        
-        // Adaptive starting dimensions based on device
-        // iOS Safari produces larger files, so start with smaller dimensions
-        let maxDimension = isIOS ? 1200 : isMobile ? 1400 : 1920
-        let scaleFactor = 1.0 // For progressive dimension reduction
-        
-        // Iteratively compress until under size limit
-        while (sizeInBytes > maxSizeBytes && iterations < maxIterations) {
-          iterations++
-          
-          // Create canvas with max dimensions
-          const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
-          
-          // Check if canvas context is available (can be null on some devices)
-          if (!ctx) {
-            reject(new Error('Canvas 2D context not supported on this device'))
-            return
-          }
-          
-          // Calculate dimensions with progressive scaling
-          let width = img.width * scaleFactor
-          let height = img.height * scaleFactor
-          
-          // Apply max dimension constraint
-          const currentMaxDim = maxDimension * scaleFactor
-          if (width > currentMaxDim || height > currentMaxDim) {
-            if (width > height) {
-              height = (height / width) * currentMaxDim
-              width = currentMaxDim
-            } else {
-              width = (width / height) * currentMaxDim
-              height = currentMaxDim
-            }
-          }
-          
-          // Ensure dimensions are at least 100px
-          width = Math.max(100, Math.floor(width))
-          height = Math.max(100, Math.floor(height))
-          
-          canvas.width = width
-          canvas.height = height
-          
-          // Draw image on canvas
-          ctx.drawImage(img, 0, 0, width, height)
-          
-          // Use toDataURL for consistency across devices (toBlob behaves differently on iOS)
-          // toDataURL is more predictable and reliable
-          base64String = canvas.toDataURL('image/jpeg', quality / 100)
-          
-          // Validate base64 string
-          if (!base64String || !base64String.includes('base64,')) {
-            reject(new Error('Image compression produced invalid base64 data'))
-            return
-          }
-          
-          // Calculate actual size from base64 string
-          const base64Data = base64String.split(',')[1]
-          if (!base64Data) {
-            reject(new Error('Invalid base64 format after compression'))
-            return
-          }
-          
-          // More accurate size calculation
-          const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0
-          sizeInBytes = (base64Data.length * 3) / 4 - padding
-          
-          console.log(
-            `[ImageService] Iteration ${iterations}: ` +
-            `${width}x${height}, Quality ${quality}%, ` +
-            `Scale ${(scaleFactor * 100).toFixed(0)}%, ` +
-            `Size ${(sizeInBytes / 1024).toFixed(2)} KB`
-          )
-          
-          // Adaptive compression strategy
-          if (sizeInBytes > maxSizeBytes) {
-            if (iterations <= 3) {
-              // First few iterations: reduce quality aggressively
-              quality -= 15
-            } else if (iterations <= 8) {
-              // Middle iterations: reduce quality and dimensions
-              quality -= 10
-              scaleFactor *= 0.9 // Reduce dimensions by 10%
-            } else {
-              // Later iterations: aggressive dimension reduction
-              quality = Math.max(5, quality - 5)
-              scaleFactor *= 0.85 // Reduce dimensions by 15%
-            }
-            
-            // Safety bounds
-            quality = Math.max(5, quality)
-            scaleFactor = Math.max(0.2, scaleFactor) // Don't go below 20% of original
-          }
+        if (image.decode) {
+          await image.decode()
         }
-        
-        // More lenient size check - allow up to 3x the target size
-        // (Better to save a slightly larger image than fail completely)
-        if (sizeInBytes > maxSizeBytes * 3) {
-          reject(new Error(
-            `Image is too large even after ${iterations} compression attempts. ` +
-            `Final size: ${(sizeInBytes / 1024).toFixed(2)} KB, ` +
-            `Maximum allowed: ${maxSizeKB} KB. ` +
-            `Original image: ${img.width}x${img.height}. ` +
-            `Please use a smaller image or take a new photo.`
-          ))
-          return
-        }
-        
-        if (iterations >= maxIterations) {
-          console.warn(`[ImageService] Max iterations (${maxIterations}) reached. Final size: ${(sizeInBytes / 1024).toFixed(2)} KB`)
-        }
-        
-        if (sizeInBytes > maxSizeBytes && sizeInBytes <= maxSizeBytes * 3) {
-          console.warn(
-            `[ImageService] Image slightly over target size but acceptable. ` +
-            `Final: ${(sizeInBytes / 1024).toFixed(2)} KB, Target: ${maxSizeKB} KB`
-          )
-        }
-        
-        console.log(`[ImageService] Compression successful! Final size: ${(sizeInBytes / 1024).toFixed(2)} KB after ${iterations} iterations`)
-        resolve(base64String)
-        
-      } catch (error) {
-        reject(new Error(`Image compression failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+        resolve(image)
+      } catch {
+        resolve(image) // decode() might fail on some browsers, continue anyway
+      }
+    }
+    image.onerror = () => reject(new Error('Failed to load image. The file may be corrupted or in an unsupported format.'))
+    image.src = dataUrl
+  })
+  
+  // Step 3: Compress iteratively
+  console.log(`[ImageService] Original: ${img.width}x${img.height}`)
+  
+  let quality = initialQuality
+  let scaleFactor = 1.0
+  let base64String = ''
+  let sizeInBytes = Infinity
+  
+  const maxDimension = 1600 // Universal max dimension
+  const maxIterations = 15
+  
+  // Reuse single canvas
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  
+  if (!ctx) {
+    throw new Error('Canvas 2D context not supported on this device')
+  }
+  
+  for (let i = 0; i < maxIterations && sizeInBytes > maxSizeBytes; i++) {
+    // Calculate dimensions
+    let width = img.width * scaleFactor
+    let height = img.height * scaleFactor
+    
+    // Apply max dimension constraint
+    if (width > maxDimension || height > maxDimension) {
+      if (width > height) {
+        height = (height / width) * maxDimension
+        width = maxDimension
+      } else {
+        width = (width / height) * maxDimension
+        height = maxDimension
       }
     }
     
-    img.onerror = () => {
-      reject(new Error('Failed to load image. The file may be corrupted or in an unsupported format.'))
-    }
+    width = Math.max(100, Math.floor(width))
+    height = Math.max(100, Math.floor(height))
     
-    reader.onerror = () => {
-      reject(new Error('Failed to read file from device storage.'))
-    }
+    canvas.width = width
+    canvas.height = height
+    ctx.clearRect(0, 0, width, height)
+    ctx.drawImage(img, 0, 0, width, height)
     
-    reader.readAsDataURL(file)
-  })
+    base64String = canvas.toDataURL('image/jpeg', quality / 100)
+    
+    // Calculate size
+    const base64Data = base64String.split(',')[1]
+    if (!base64Data) throw new Error('Invalid base64 format')
+    
+    const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0
+    sizeInBytes = (base64Data.length * 3) / 4 - padding
+    
+    console.log(`[ImageService] ${i + 1}: ${width}x${height}, Q${quality}%, ${(sizeInBytes / 1024).toFixed(1)} KB`)
+    
+    // Adjust for next iteration if needed
+    if (sizeInBytes > maxSizeBytes) {
+      if (quality > 50) {
+        quality -= 10
+      } else {
+        quality = Math.max(20, quality - 5)
+        scaleFactor *= 0.85
+      }
+    }
+  }
+  
+  // Allow up to 2x target size (better to save than fail)
+  if (sizeInBytes > maxSizeBytes * 2) {
+    throw new Error(`Image too large: ${(sizeInBytes / 1024).toFixed(0)} KB. Max: ${maxSizeKB} KB`)
+  }
+  
+  console.log(`[ImageService] Done: ${(sizeInBytes / 1024).toFixed(1)} KB`)
+  return base64String
 }
 
 /**
@@ -263,9 +203,9 @@ export async function uploadSessionImage(
     throw new Error(validation.error)
   }
   
-  // Compress
-  const base64 = await compressImageToBase64(file, 30)
-  const sizeBytes = Math.floor((base64.length * 3) / 4) // Approximate size
+  // Compress (target: 100 KB for good quality)
+  const base64 = await compressImageToBase64(file)
+  const sizeBytes = Math.floor((base64.length * 3) / 4)
   
   // Save to separate storage
   const imageId = await saveImage(userId, {
@@ -295,8 +235,8 @@ export async function uploadProfilePicture(
     throw new Error(validation.error)
   }
   
-  // Compress
-  const base64 = await compressImageToBase64(file, 30)
+  // Compress (target: 100 KB for good quality)
+  const base64 = await compressImageToBase64(file)
   const sizeBytes = Math.floor((base64.length * 3) / 4)
   
   // Save to separate storage
