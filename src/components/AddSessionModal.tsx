@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addSessionCached, getTags, getUserProfile } from '../services/dataManager'
 import { uploadSessionImage, validateImageFile } from '../services/imageService'
+import { uploadSessionAudio } from '../services/audioService'
+import { useVoiceRecorder } from '../hooks/useVoiceRecorder'
 import { Tag, Location } from '../types'
 import { formatDateShort, getCurrentTimezone, getDateInTimezone } from '../utils/dateUtils'
 import { getCurrentLocation } from '../utils/locationUtils'
@@ -26,6 +28,45 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null)
   const [locationLoading, setLocationLoading] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Voice recorder with real-time transcription + audio capture
+  const {
+    isRecording,
+    isSupported: isVoiceSupported,
+    interimTranscript,
+    error: voiceError,
+    audioBlob,
+    audioDuration,
+    startRecording,
+    stopRecording,
+    clearTranscript,
+    clearAudio
+  } = useVoiceRecorder({
+    onTranscript: (text, isFinal) => {
+      if (isFinal) {
+        // Append final transcript to description
+        setDescription(prev => prev ? prev + ' ' + text : text)
+      }
+    },
+    language: 'en-US',
+    continuous: true
+  })
+
+  // Toggle voice recording
+  const handleVoiceToggle = () => {
+    if (isRecording) {
+      stopRecording()
+    } else {
+      clearTranscript()
+      clearAudio()
+      startRecording()
+    }
+  }
+
+  // Remove recorded audio
+  const handleRemoveAudio = () => {
+    clearAudio()
+  }
 
   // Get user's timezone once when component mounts
   const userTimezone = useMemo(() => getCurrentTimezone(), [])
@@ -70,6 +111,11 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
 
   // Manual save function
   const saveSession = async () => {
+    // Stop recording if active
+    if (isRecording) {
+      stopRecording()
+    }
+    
     // Allow saving if either description exists OR any tags are filled
     const hasTagValues = Object.keys(tagValues).length > 0 && 
                          Object.values(tagValues).some(v => v !== null && v !== undefined && v !== '' && v !== false)
@@ -78,6 +124,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
 
     setSaving(true)
     let imageId: string | undefined = undefined
+    let audioId: string | undefined = undefined
     
     try {
       // Generate timestamp ONCE for both session and image
@@ -111,7 +158,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               errorMessage += imageError.message
             }
           } else {
-            errorMessage += 'Unknown error occurred during image processing.'
+              errorMessage += 'Unknown error occurred during image processing.'
           }
           
           // ASK USER: Do they want to save without image?
@@ -130,6 +177,40 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           
           // User chose to continue without image
           imageId = undefined
+        }
+      }
+      
+      // STEP 1.5: Upload audio if recorded
+      if (audioBlob && audioDuration > 0) {
+        try {
+          console.log('[AddSessionModal] Uploading audio...')
+          audioId = await uploadSessionAudio(currentUser.uid, today, timestamp, audioBlob, audioDuration)
+          console.log('[AddSessionModal] Audio uploaded successfully:', audioId)
+        } catch (audioError) {
+          console.error('[AddSessionModal] Audio upload failed:', audioError)
+          
+          let errorMessage = 'Audio Upload Failed\n\n'
+          if (audioError instanceof Error) {
+            errorMessage += audioError.message
+          } else {
+            errorMessage += 'Unknown error occurred during audio upload.'
+          }
+          
+          // ASK USER: Do they want to save without audio?
+          const userChoice = window.confirm(
+            errorMessage + 
+            '\n\nDo you want to save the session WITHOUT the audio?\n\n' +
+            '• Click OK to save without audio (text is still saved)\n' +
+            '• Click Cancel to go back'
+          )
+          
+          if (!userChoice) {
+            setSaving(false)
+            return
+          }
+          
+          // User chose to continue without audio
+          audioId = undefined
         }
       }
       
@@ -160,6 +241,11 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       // Add imageId if image was successfully uploaded
       if (imageId) {
         session.imageId = imageId
+      }
+      
+      // Add audioId if audio was successfully uploaded
+      if (audioId) {
+        session.audioId = audioId
       }
 
       try {
@@ -259,6 +345,13 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       setTimeout(() => {
         textareaRef.current?.focus()
       }, 100) // Small delay to ensure modal is fully rendered
+    } else {
+      // Stop recording when modal closes
+      if (isRecording) {
+        stopRecording()
+      }
+      clearTranscript()
+      clearAudio()
     }
   }, [isOpen])
 
@@ -480,17 +573,108 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Description */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              What are you doing? {tags.length === 0 && '*'}
-            </label>
-            <textarea
-              ref={textareaRef}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
-              placeholder={tags.length > 0 ? "Optional - describe what you're doing..." : "I am working on..."}
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                What are you doing? {tags.length === 0 && '*'}
+              </label>
+              
+              {/* Voice Recording Button */}
+              {isVoiceSupported && (
+                <button
+                  type="button"
+                  onClick={handleVoiceToggle}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    isRecording
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  title={isRecording ? 'Stop recording' : 'Start voice input'}
+                >
+                  {isRecording ? (
+                    <>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
+                      </svg>
+                      <span>Stop</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                      <span>Voice</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            
+            {/* Voice Error */}
+            {voiceError && (
+              <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs text-red-600 dark:text-red-400">{voiceError}</p>
+              </div>
+            )}
+            
+            {/* Recording Indicator */}
+            {isRecording && (
+              <div className="mb-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                Listening... speak now
+              </div>
+            )}
+            
+            <div className="relative">
+              <textarea
+                ref={textareaRef}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+                placeholder={tags.length > 0 ? "Optional - describe what you're doing..." : "I am working on..."}
+              />
+              
+              {/* Interim transcript preview (what's being recognized in real-time) */}
+              {interimTranscript && (
+                <div className="absolute bottom-2 left-3 right-3 text-sm text-gray-400 dark:text-gray-500 italic pointer-events-none">
+                  {interimTranscript}...
+                </div>
+              )}
+            </div>
+            
+            {/* Help text for voice */}
+            {isVoiceSupported && !isRecording && !audioBlob && (
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                Tip: Use voice input to dictate, then edit the text as needed
+              </p>
+            )}
+            
+            {/* Audio Recorded Indicator */}
+            {audioBlob && !isRecording && (
+              <div className="mt-2 flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                  <span className="text-xs text-green-700 dark:text-green-300">
+                    Audio recorded ({audioDuration.toFixed(1)}s, {(audioBlob.size / 1024).toFixed(0)} KB) - will be saved with session
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveAudio}
+                  className="p-1 text-green-600 dark:text-green-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  title="Remove audio"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Tags */}

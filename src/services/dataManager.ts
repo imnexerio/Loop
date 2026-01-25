@@ -37,7 +37,12 @@ export {
   deleteImage,
   getAllImages,
   getImagesForDate,
-  subscribeToImages
+  subscribeToImages,
+  
+  // Audio
+  saveAudio,
+  getAudio,
+  deleteAudio
 } from './firebaseService'
 
 // Deprecated - no longer used with real-time database

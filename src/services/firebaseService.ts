@@ -19,7 +19,7 @@ import {
   type Unsubscribe
 } from 'firebase/database'
 import { database } from '../firebase/config'
-import { Tag, DayLog, Session, UserProfile, StoredImage } from '../types'
+import { Tag, DayLog, Session, UserProfile, StoredImage, StoredAudio } from '../types'
 import { getDateStringUTC } from '../utils/dateUtils'
 
 // ============================================
@@ -31,6 +31,7 @@ interface FirebaseSession {
   description?: string // Optional - sessions can have just tags
   tags: Record<string, any>
   imageId?: string
+  audioId?: string // Voice recording reference
   timezone?: string // IANA timezone where session was logged
   location?: { lat: number; lng: number } // GPS coordinates
 }
@@ -153,7 +154,8 @@ export function subscribeToDayLog(
       location: (session as FirebaseSession).location,
       description: (session as FirebaseSession).description,
       tags: (session as FirebaseSession).tags,
-      imageId: (session as FirebaseSession).imageId
+      imageId: (session as FirebaseSession).imageId,
+      audioId: (session as FirebaseSession).audioId
     }))
     
     // Sort by timestamp (newest first)
@@ -196,7 +198,8 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog | 
       location: (session as FirebaseSession).location,
       description: (session as FirebaseSession).description,
       tags: (session as FirebaseSession).tags,
-      imageId: (session as FirebaseSession).imageId
+      imageId: (session as FirebaseSession).imageId,
+      audioId: (session as FirebaseSession).audioId
     }))
     
     // Sort by timestamp (newest first)
@@ -234,6 +237,7 @@ export async function addSession(
       description: session.description,
       tags: session.tags,
       imageId: 'imageId' in session ? session.imageId : undefined,
+      audioId: 'audioId' in session ? session.audioId : undefined,
       timezone: 'timezone' in session ? session.timezone : undefined,
       location: 'location' in session ? session.location : undefined
     }
@@ -244,6 +248,9 @@ export async function addSession(
     }
     if (!firebaseSession.imageId) {
       delete firebaseSession.imageId
+    }
+    if (!firebaseSession.audioId) {
+      delete firebaseSession.audioId
     }
     if (!firebaseSession.timezone) {
       delete firebaseSession.timezone
@@ -746,4 +753,74 @@ export function subscribeToImages(
   })
   
   return unsubscribe
+}
+
+// ============================================
+// AUDIO STORAGE OPERATIONS
+// ============================================
+
+/**
+ * Save audio recording to storage
+ * Returns the audio ID
+ */
+export async function saveAudio(
+  userId: string,
+  audioData: Omit<StoredAudio, 'id'>
+): Promise<string> {
+  try {
+    // Generate unique audio ID
+    const audioId = `audio_${audioData.createdAt}_${Math.random().toString(36).substr(2, 9)}`
+    const audioRef = ref(database, `users/${userId}/audio/${audioId}`)
+    
+    const audio: StoredAudio = {
+      id: audioId,
+      ...audioData
+    }
+    
+    await set(audioRef, audio)
+    
+    return audioId
+  } catch (error) {
+    console.error('Error saving audio:', error)
+    throw error
+  }
+}
+
+/**
+ * Get audio by ID
+ */
+export async function getAudio(
+  userId: string,
+  audioId: string
+): Promise<StoredAudio | null> {
+  try {
+    const audioRef = ref(database, `users/${userId}/audio/${audioId}`)
+    const snapshot = await get(audioRef)
+    
+    if (!snapshot.exists()) {
+      console.warn(`[FirebaseService] Audio not found: ${audioId}`)
+      return null
+    }
+    
+    return snapshot.val() as StoredAudio
+  } catch (error) {
+    console.error('Error getting audio:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete audio by ID
+ */
+export async function deleteAudio(
+  userId: string,
+  audioId: string
+): Promise<void> {
+  try {
+    const audioRef = ref(database, `users/${userId}/audio/${audioId}`)
+    await remove(audioRef)
+  } catch (error) {
+    console.error('Error deleting audio:', error)
+    throw error
+  }
 }

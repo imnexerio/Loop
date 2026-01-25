@@ -29,6 +29,7 @@ export interface Session {
   description?: string // Optional - sessions can have just tags
   tags: Record<string, any> // tagId -> value
   imageId?: string // Optional reference to image in separate storage
+  audioId?: string // Optional reference to voice recording in separate storage
 }
 
 export interface DayLog {
@@ -62,6 +63,18 @@ export interface StoredImage {
   createdAt: number
   size: number
   // For session images
+  sessionTimestamp?: number
+  date?: string
+}
+
+// Audio storage types
+export interface StoredAudio {
+  id: string
+  base64: string
+  createdAt: number
+  size: number
+  duration: number // Duration in seconds
+  mimeType: string // e.g., 'audio/webm', 'audio/mp4'
   sessionTimestamp?: number
   date?: string
 }

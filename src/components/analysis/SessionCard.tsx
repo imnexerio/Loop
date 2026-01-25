@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { Session, Tag } from '../../types'
-import { getImage } from '../../services/dataManager'
+import { getImage, getAudio } from '../../services/dataManager'
 import ImageViewer from '../ImageViewer'
 import { formatTimeInTimezone, getTimezoneAbbreviation } from '../../utils/dateUtils'
 import { formatLocationShort, getGoogleMapsUrl } from '../../utils/locationUtils'
@@ -17,6 +17,14 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
   const [imageLoading, setImageLoading] = useState(false)
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  
+  // Audio state
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [audioDuration, setAudioDuration] = useState<number>(0)
+  const [audioLoading, setAudioLoading] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [playbackTime, setPlaybackTime] = useState(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Load image if session has imageId
   useEffect(() => {
@@ -38,6 +46,56 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
 
     loadImage()
   }, [currentUser, session.imageId])
+
+  // Load audio if session has audioId
+  useEffect(() => {
+    if (!currentUser || !session.audioId) return
+
+    const loadAudio = async () => {
+      setAudioLoading(true)
+      try {
+        const audio = await getAudio(currentUser.uid, session.audioId!)
+        if (audio) {
+          setAudioUrl(audio.base64)
+          setAudioDuration(audio.duration || 0)
+        }
+      } catch (error) {
+        console.error('Error loading session audio:', error)
+      } finally {
+        setAudioLoading(false)
+      }
+    }
+
+    loadAudio()
+  }, [currentUser, session.audioId])
+
+  // Audio playback handlers
+  const togglePlayback = () => {
+    if (!audioRef.current) return
+    
+    if (isPlaying) {
+      audioRef.current.pause()
+    } else {
+      audioRef.current.play()
+    }
+  }
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setPlaybackTime(audioRef.current.currentTime)
+    }
+  }
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false)
+    setPlaybackTime(0)
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${String(secs).padStart(2, '0')}`
+  }
 
   const getTagById = (tagId: string) => {
     return tags.find(t => t.id === tagId)
@@ -136,6 +194,75 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                   </svg>
                 </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Audio Player */}
+      {session.audioId && (
+        <div className="mb-3">
+          {audioLoading ? (
+            <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Loading audio...</span>
+            </div>
+          ) : audioUrl ? (
+            <div className="flex items-center gap-3 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+              {/* Hidden audio element */}
+              <audio
+                ref={audioRef}
+                src={audioUrl}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={handleAudioEnded}
+              />
+              
+              {/* Play/Pause Button */}
+              <button
+                onClick={togglePlayback}
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white rounded-full transition-colors"
+                title={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
+              
+              {/* Progress Bar */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-purple-200 dark:bg-purple-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-purple-600 dark:bg-purple-400 rounded-full transition-all"
+                      style={{ width: `${audioDuration > 0 ? (playbackTime / audioDuration) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[10px] text-purple-600 dark:text-purple-400">
+                    {formatTime(playbackTime)}
+                  </span>
+                  <span className="text-[10px] text-purple-600 dark:text-purple-400">
+                    {formatTime(audioDuration)}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Audio Icon */}
+              <div className="flex-shrink-0">
+                <svg className="w-4 h-4 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
               </div>
             </div>
           ) : null}
