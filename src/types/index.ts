@@ -43,6 +43,7 @@ export interface UserSettings {
   llmProvider: 'gemini' | 'chatgpt' | 'claude'
   llmApiKey?: string
   trackLocation?: boolean // Opt-in GPS tracking for sessions
+  pinHash?: string // SHA-256 hash of user's PIN (if enabled)
 }
 
 export interface UserProfile {

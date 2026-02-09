@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { usePin } from '../contexts/PinContext'
 import { Tag, TagType, UserSettings } from '../types'
 import { createTagCached, deleteTagCached, getUserProfile, updateUserProfile, getImage } from '../services/dataManager'
 import { uploadProfilePicture } from '../services/imageService'
 import { getLocationPermissionStatus, getCurrentLocation } from '../utils/locationUtils'
+import PinSetupModal from './PinSetupModal'
 
 interface ProfileTabProps {
   tags: Tag[]
@@ -13,11 +15,14 @@ interface ProfileTabProps {
 
 const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) => {
   const { currentUser, logout } = useAuth()
+  const { isPinEnabled, setupPin, changePin, removePin } = usePin()
   const [showAddTag, setShowAddTag] = useState(false)
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
   const [uploadingPicture, setUploadingPicture] = useState(false)
   const [settings, setSettings] = useState<UserSettings>({ llmProvider: 'gemini' })
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt')
+  const [pinModalOpen, setPinModalOpen] = useState(false)
+  const [pinModalMode, setPinModalMode] = useState<'setup' | 'change' | 'remove'>('setup')
   const [newTag, setNewTag] = useState({
     name: '',
     type: 'number' as TagType,
@@ -318,6 +323,53 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
             />
           </button>
         </div>
+
+        {/* PIN Lock Setting */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl mt-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔒</span>
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">
+                PIN Lock
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {isPinEnabled ? 'PIN is enabled' : 'Require PIN to access app'}
+              </p>
+            </div>
+          </div>
+          {isPinEnabled ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setPinModalMode('change')
+                  setPinModalOpen(true)
+                }}
+                className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+              >
+                Change
+              </button>
+              <button
+                onClick={() => {
+                  setPinModalMode('remove')
+                  setPinModalOpen(true)
+                }}
+                className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setPinModalMode('setup')
+                setPinModalOpen(true)
+              }}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Set Up
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tags Management */}
@@ -486,6 +538,16 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
           Logout
         </button>
       </div>
+
+      {/* PIN Setup Modal */}
+      <PinSetupModal
+        isOpen={pinModalOpen}
+        mode={pinModalMode}
+        onClose={() => setPinModalOpen(false)}
+        onSetupPin={setupPin}
+        onChangePin={changePin}
+        onRemovePin={removePin}
+      />
     </div>
   )
 }
