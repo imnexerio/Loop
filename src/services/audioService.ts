@@ -129,8 +129,6 @@ export function recombineBase64Chunks(chunks: string[]): string {
  */
 export async function uploadSessionAudio(
   userId: string,
-  date: string,
-  sessionTimestamp: number,
   audioBlob: Blob,
   duration: number
 ): Promise<string> {
@@ -146,12 +144,9 @@ export async function uploadSessionAudio(
   
   // Save metadata first
   const audioId = await saveAudioToDb(userId, {
-    createdAt: Date.now(),
     size: totalSize,
     duration,
     mimeType: audioBlob.type || 'audio/webm',
-    sessionTimestamp,
-    date,
     chunkCount,
     chunkIds: [] // Will be populated as chunks are saved
   })
@@ -160,8 +155,7 @@ export async function uploadSessionAudio(
   const chunkIds: string[] = []
   for (let i = 0; i < chunks.length; i++) {
     const chunkSize = getBase64SizeBytes(chunks[i])
-    const chunkId = await saveAudioChunk(userId, {
-      audioId,
+    const chunkId = await saveAudioChunk(userId, audioId, {
       chunkIndex: i,
       base64: chunks[i],
       size: chunkSize
@@ -172,12 +166,9 @@ export async function uploadSessionAudio(
   
   // Update audio metadata with chunk IDs
   await saveAudioToDb(userId, {
-    createdAt: Date.now(),
     size: totalSize,
     duration,
     mimeType: audioBlob.type || 'audio/webm',
-    sessionTimestamp,
-    date,
     chunkCount,
     chunkIds
   }, audioId)

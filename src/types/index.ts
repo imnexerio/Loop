@@ -58,33 +58,21 @@ export interface UserProfile {
 export type ImageType = 'profile' | 'session'
 
 export interface StoredImage {
-  id: string
-  type: ImageType
   base64: string
-  createdAt: number
   size: number
-  // For session images
-  sessionTimestamp?: number
-  date?: string
 }
 
 // Audio storage types
 export interface StoredAudio {
-  id: string
-  createdAt: number
   size: number
   duration: number // Duration in seconds
   mimeType: string // e.g., 'audio/webm', 'audio/mp4'
-  sessionTimestamp?: number
-  date?: string
   chunkCount: number
   chunkIds: string[] // References to AudioChunk records
 }
 
 // Audio chunk for large recordings
 export interface AudioChunk {
-  id: string
-  audioId: string // Parent audio ID
   chunkIndex: number
   base64: string
   size: number

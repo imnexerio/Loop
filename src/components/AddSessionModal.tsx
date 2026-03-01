@@ -135,7 +135,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       if (selectedImage) {
         try {
           console.log('[AddSessionModal] Uploading image...')
-          imageId = await uploadSessionImage(currentUser.uid, today, timestamp, selectedImage)
+          imageId = await uploadSessionImage(currentUser.uid, selectedImage)
           console.log('[AddSessionModal] Image uploaded successfully:', imageId)
         } catch (imageError) {
           // Specific error handling for image upload
@@ -185,7 +185,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       if (audioBlob && audioDuration > 0) {
         try {
           console.log('[AddSessionModal] Uploading audio...')
-          audioId = await uploadSessionAudio(currentUser.uid, today, timestamp, audioBlob, audioDuration)
+          audioId = await uploadSessionAudio(currentUser.uid, audioBlob, audioDuration)
           console.log('[AddSessionModal] Audio uploaded successfully:', audioId)
         } catch (audioError) {
           console.error('[AddSessionModal] Audio upload failed:', audioError)

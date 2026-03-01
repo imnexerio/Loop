@@ -193,8 +193,6 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
  */
 export async function uploadSessionImage(
   userId: string,
-  date: string,
-  sessionTimestamp: number,
   file: File
 ): Promise<string> {
   // Validate
@@ -208,13 +206,9 @@ export async function uploadSessionImage(
   const sizeBytes = Math.floor((base64.length * 3) / 4)
   
   // Save to separate storage
-  const imageId = await saveImage(userId, {
-    type: 'session',
+  const imageId = await saveImage(userId, 'session', {
     base64,
-    createdAt: Date.now(),
-    size: sizeBytes,
-    sessionTimestamp,
-    date
+    size: sizeBytes
   })
   
   // Return imageId - session will be created with this ID
@@ -240,10 +234,8 @@ export async function uploadProfilePicture(
   const sizeBytes = Math.floor((base64.length * 3) / 4)
   
   // Save to separate storage
-  const imageId = await saveImage(userId, {
-    type: 'profile',
+  const imageId = await saveImage(userId, 'profile', {
     base64,
-    createdAt: Date.now(),
     size: sizeBytes
   })
   

@@ -19,7 +19,7 @@ import {
   type Unsubscribe
 } from 'firebase/database'
 import { database } from '../firebase/config'
-import { Tag, DayLog, Session, UserProfile, StoredImage, StoredAudio, AudioChunk } from '../types'
+import { Tag, DayLog, Session, UserProfile, StoredImage, StoredAudio, AudioChunk, ImageType } from '../types'
 import { getDateStringUTC } from '../utils/dateUtils'
 
 // ============================================
@@ -162,7 +162,7 @@ export function subscribeToDayLog(
     sessions.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp))
     
     const dayLog: DayLog = {
-      date: data.date,
+      date,
       sessions,
       lastUpdated: data.lastUpdated
     }
@@ -206,7 +206,7 @@ export async function getDayLog(userId: string, date: string): Promise<DayLog | 
     sessions.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp))
     
     return {
-      date: data.date,
+      date,
       sessions,
       lastUpdated: data.lastUpdated?.toString() || Date.now().toString()
     }
@@ -268,13 +268,11 @@ export async function addSession(
     if (!daySnapshot.exists()) {
       // First session for this day
       await set(ref(database, `users/${userId}/sessions/${date}`), {
-        date,
         sessions: { [timestamp]: firebaseSession },
         lastUpdated: timestamp
       })
     } else {
       // Update lastUpdated
-      await set(ref(database, `users/${userId}/sessions/${date}/date`), date)
       await set(ref(database, `users/${userId}/sessions/${date}/lastUpdated`), timestamp)
     }
     
@@ -603,19 +601,15 @@ export function unsubscribeAll(unsubscribes: Unsubscribe[]) {
  */
 export async function saveImage(
   userId: string,
-  imageData: Omit<StoredImage, 'id'>
+  type: ImageType,
+  imageData: StoredImage
 ): Promise<string> {
   try {
-    // Generate unique image ID
-    const imageId = `${imageData.type}_${imageData.createdAt}_${Math.random().toString(36).substr(2, 9)}`
+    // Generate unique image ID (type prefix allows deriving type from key)
+    const imageId = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const imageRef = ref(database, `users/${userId}/images/${imageId}`)
     
-    const image: StoredImage = {
-      id: imageId,
-      ...imageData
-    }
-    
-    await set(imageRef, image)
+    await set(imageRef, imageData)
     
     return imageId
   } catch (error) {
@@ -686,33 +680,6 @@ export async function getAllImages(
 }
 
 /**
- * Get images for a specific date
- */
-export async function getImagesForDate(
-  userId: string,
-  date: string
-): Promise<StoredImage[]> {
-  try {
-    const imagesRef = ref(database, `users/${userId}/images`)
-    const snapshot = await get(imagesRef)
-    
-    if (!snapshot.exists()) {
-      return []
-    }
-    
-    const imagesObj = snapshot.val() as Record<string, StoredImage>
-    const dateImages = Object.values(imagesObj).filter(
-      img => img.type === 'session' && img.date === date
-    )
-    
-    return dateImages
-  } catch (error) {
-    console.error('Error getting images for date:', error)
-    throw error
-  }
-}
-
-/**
  * Update session to add image reference
  */
 export async function updateSessionImage(
@@ -766,20 +733,15 @@ export function subscribeToImages(
  */
 export async function saveAudio(
   userId: string,
-  audioData: Omit<StoredAudio, 'id'>,
+  audioData: StoredAudio,
   existingAudioId?: string
 ): Promise<string> {
   try {
     // Use existing ID or generate new one
-    const audioId = existingAudioId || `audio_${audioData.createdAt}_${Math.random().toString(36).substr(2, 9)}`
+    const audioId = existingAudioId || `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const audioRef = ref(database, `users/${userId}/audio/${audioId}`)
     
-    const audio: StoredAudio = {
-      id: audioId,
-      ...audioData
-    }
-    
-    await set(audioRef, audio)
+    await set(audioRef, audioData)
     
     return audioId
   } catch (error) {
@@ -850,18 +812,14 @@ export async function deleteAudio(
  */
 export async function saveAudioChunk(
   userId: string,
-  chunkData: Omit<AudioChunk, 'id'>
+  audioId: string,
+  chunkData: AudioChunk
 ): Promise<string> {
   try {
-    const chunkId = `chunk_${chunkData.audioId}_${chunkData.chunkIndex}_${Math.random().toString(36).substr(2, 9)}`
+    const chunkId = `chunk_${audioId}_${chunkData.chunkIndex}_${Math.random().toString(36).substr(2, 9)}`
     const chunkRef = ref(database, `users/${userId}/audioChunks/${chunkId}`)
     
-    const chunk: AudioChunk = {
-      id: chunkId,
-      ...chunkData
-    }
-    
-    await set(chunkRef, chunk)
+    await set(chunkRef, chunkData)
     
     return chunkId
   } catch (error) {

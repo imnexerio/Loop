@@ -40,7 +40,6 @@ export {
   getImage,
   deleteImage,
   getAllImages,
-  getImagesForDate,
   subscribeToImages,
   
   // Audio (raw Firebase access)
