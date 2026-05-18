@@ -150,6 +150,19 @@ export const PinProvider = ({ children }: PinProviderProps) => {
     loadPinState()
   }, [currentUser])
 
+  // Lock the app when it goes to the background
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && isPinEnabled && currentUser) {
+        setIsLocked(true)
+        setUnlockState(false)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isPinEnabled, currentUser])
+
   /**
    * Verify entered PIN against stored hash
    */
