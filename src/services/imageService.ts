@@ -23,38 +23,61 @@ export async function compressImageToBase64(
 ): Promise<string> {
   const maxSizeBytes = maxSizeKB * 1024
   
-  // Step 1: Read file as data URL
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (!e.target?.result) {
-        reject(new Error('Failed to read image file: no data returned'))
-        return
-      }
-      resolve(e.target.result as string)
-    }
-    reader.onerror = () => reject(new Error('Failed to read file from device storage.'))
-    reader.readAsDataURL(file)
-  })
+  // Step 1: Load and decode the image
+  // createImageBitmap reads the file and decodes pixel data atomically —
+  // unlike the Image() approach where onload can fire before pixels are ready,
+  // causing canvas.drawImage to produce blank output on some devices.
+  let img: ImageBitmap | HTMLImageElement
+  let needsClose = false
   
-  // Step 2: Load image and wait for it to be fully decoded
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image()
-    image.onload = async () => {
-      try {
+  if (typeof createImageBitmap !== 'undefined') {
+    try {
+      img = await createImageBitmap(file)
+      needsClose = true
+    } catch {
+      throw new Error('Failed to load image. The file may be corrupted or in an unsupported format.')
+    }
+  } else {
+    // Fallback for older browsers: FileReader → data URL → Image
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        if (!e.target?.result) {
+          reject(new Error('Failed to read image file: no data returned'))
+          return
+        }
+        resolve(e.target.result as string)
+      }
+      reader.onerror = () => reject(new Error('Failed to read file from device storage.'))
+      reader.readAsDataURL(file)
+    })
+    
+    img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image()
+      image.onload = async () => {
         if (image.decode) {
-          await image.decode()
+          try {
+            await image.decode()
+          } catch {
+            // Retry decode once after a short delay
+            await new Promise(r => setTimeout(r, 150))
+            try { await image.decode() } catch { /* best effort */ }
+          }
         }
         resolve(image)
-      } catch {
-        resolve(image) // decode() might fail on some browsers, continue anyway
       }
-    }
-    image.onerror = () => reject(new Error('Failed to load image. The file may be corrupted or in an unsupported format.'))
-    image.src = dataUrl
-  })
+      image.onerror = () => reject(new Error('Failed to load image. The file may be corrupted or in an unsupported format.'))
+      image.src = dataUrl
+    })
+  }
   
-  // Step 3: Compress iteratively
+  // Validate the decoded image has real pixel dimensions
+  if (!img.width || !img.height) {
+    if (needsClose) (img as ImageBitmap).close()
+    throw new Error('Image has invalid dimensions. The file may be corrupted.')
+  }
+  
+  // Step 2: Compress iteratively
   console.log(`[ImageService] Original: ${img.width}x${img.height}`)
   
   let quality = initialQuality
@@ -70,6 +93,7 @@ export async function compressImageToBase64(
   const ctx = canvas.getContext('2d')
   
   if (!ctx) {
+    if (needsClose) (img as ImageBitmap).close()
     throw new Error('Canvas 2D context not supported on this device')
   }
   
@@ -121,8 +145,12 @@ export async function compressImageToBase64(
   
   // Allow up to 2x target size (better to save than fail)
   if (sizeInBytes > maxSizeBytes * 2) {
+    if (needsClose) (img as ImageBitmap).close()
     throw new Error(`Image too large: ${(sizeInBytes / 1024).toFixed(0)} KB. Max: ${maxSizeKB} KB`)
   }
+  
+  // Free ImageBitmap memory now that compression is done
+  if (needsClose) (img as ImageBitmap).close()
   
   console.log(`[ImageService] Done: ${(sizeInBytes / 1024).toFixed(1)} KB`)
   return base64String
