@@ -24,56 +24,19 @@ export async function compressImageToBase64(
   const maxSizeBytes = maxSizeKB * 1024
   
   // Step 1: Load and decode the image
-  // createImageBitmap reads the file and decodes pixel data atomically —
-  // unlike the Image() approach where onload can fire before pixels are ready,
-  // causing canvas.drawImage to produce blank output on some devices.
-  let img: ImageBitmap | HTMLImageElement
-  let needsClose = false
+  // createImageBitmap reads the file and decodes pixel data atomically,
+  // ensuring pixels are ready before canvas.drawImage is called.
+  let img: ImageBitmap
   
-  if (typeof createImageBitmap !== 'undefined') {
-    try {
-      img = await createImageBitmap(file)
-      needsClose = true
-    } catch {
-      throw new Error('Failed to load image. The file may be corrupted or in an unsupported format.')
-    }
-  } else {
-    // Fallback for older browsers: FileReader → data URL → Image
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        if (!e.target?.result) {
-          reject(new Error('Failed to read image file: no data returned'))
-          return
-        }
-        resolve(e.target.result as string)
-      }
-      reader.onerror = () => reject(new Error('Failed to read file from device storage.'))
-      reader.readAsDataURL(file)
-    })
-    
-    img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image()
-      image.onload = async () => {
-        if (image.decode) {
-          try {
-            await image.decode()
-          } catch {
-            // Retry decode once after a short delay
-            await new Promise(r => setTimeout(r, 150))
-            try { await image.decode() } catch { /* best effort */ }
-          }
-        }
-        resolve(image)
-      }
-      image.onerror = () => reject(new Error('Failed to load image. The file may be corrupted or in an unsupported format.'))
-      image.src = dataUrl
-    })
+  try {
+    img = await createImageBitmap(file)
+  } catch {
+    throw new Error('Failed to load image. The file may be corrupted or in an unsupported format.')
   }
   
   // Validate the decoded image has real pixel dimensions
   if (!img.width || !img.height) {
-    if (needsClose) (img as ImageBitmap).close()
+    img.close()
     throw new Error('Image has invalid dimensions. The file may be corrupted.')
   }
   
@@ -93,7 +56,7 @@ export async function compressImageToBase64(
   const ctx = canvas.getContext('2d')
   
   if (!ctx) {
-    if (needsClose) (img as ImageBitmap).close()
+    img.close()
     throw new Error('Canvas 2D context not supported on this device')
   }
   
@@ -145,12 +108,12 @@ export async function compressImageToBase64(
   
   // Allow up to 2x target size (better to save than fail)
   if (sizeInBytes > maxSizeBytes * 2) {
-    if (needsClose) (img as ImageBitmap).close()
+    img.close()
     throw new Error(`Image too large: ${(sizeInBytes / 1024).toFixed(0)} KB. Max: ${maxSizeKB} KB`)
   }
   
   // Free ImageBitmap memory now that compression is done
-  if (needsClose) (img as ImageBitmap).close()
+  img.close()
   
   console.log(`[ImageService] Done: ${(sizeInBytes / 1024).toFixed(1)} KB`)
   return base64String
@@ -241,6 +204,20 @@ export async function uploadSessionImage(
   
   // Return imageId - session will be created with this ID
   console.log(`[ImageService] Image saved successfully: ${imageId}`)
+  return imageId
+}
+
+/**
+ * Save an already-compressed base64 image to session storage
+ * Used when compression happens at pick-time, not save-time
+ */
+export async function saveCompressedSessionImage(
+  userId: string,
+  base64: string
+): Promise<string> {
+  const sizeBytes = Math.floor((base64.length * 3) / 4)
+  const imageId = await saveImage(userId, 'session', { base64, size: sizeBytes })
+  console.log(`[ImageService] Compressed image saved: ${imageId}`)
   return imageId
 }
 

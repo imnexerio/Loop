@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addSessionCached, getTags, getUserProfile } from '../services/dataManager'
-import { uploadSessionImage, validateImageFile } from '../services/imageService'
+import { compressImageToBase64, saveCompressedSessionImage, validateImageFile } from '../services/imageService'
 import { uploadSessionAudio } from '../services/audioService'
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder'
 import { Tag, Location } from '../types'
@@ -20,8 +20,10 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
   const [description, setDescription] = useState('')
   const [tagValues, setTagValues] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string>('')
+  const [compressedBase64, setCompressedBase64] = useState('')
+  const [compressing, setCompressing] = useState(false)
+  const [imageFileName, setImageFileName] = useState('')
+  const [compressedSizeKB, setCompressedSizeKB] = useState(0)
   const [tags, setTags] = useState<Tag[]>(initialTags)
   const [loadingTags, setLoadingTags] = useState(false)
   const [trackLocation, setTrackLocation] = useState(false)
@@ -119,7 +121,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
     // Allow saving if any content exists: description, tags, image, or audio
     const hasTagValues = Object.keys(tagValues).length > 0 && 
                          Object.values(tagValues).some(v => v !== null && v !== undefined && v !== '' && v !== false)
-    const hasContent = description.trim() || hasTagValues || selectedImage || audioBlob
+    const hasContent = description.trim() || hasTagValues || compressedBase64 || audioBlob
     
     if (!currentUser || !hasContent) return
 
@@ -131,52 +133,27 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       // Generate timestamp ONCE for both session and image
       const timestamp = Date.now()
       
-      // STEP 1: Upload image FIRST if selected (this is the most likely to fail)
-      if (selectedImage) {
+      // STEP 1: Save pre-compressed image if available (compression already done at pick time)
+      if (compressedBase64) {
         try {
-          console.log('[AddSessionModal] Uploading image...')
-          imageId = await uploadSessionImage(currentUser.uid, selectedImage)
-          console.log('[AddSessionModal] Image uploaded successfully:', imageId)
-        } catch (imageError) {
-          // Specific error handling for image upload
-          console.error('[AddSessionModal] Image upload failed:', imageError)
+          console.log('[AddSessionModal] Saving compressed image...')
+          imageId = await saveCompressedSessionImage(currentUser.uid, compressedBase64)
+          console.log('[AddSessionModal] Image saved successfully:', imageId)
+        } catch (saveError) {
+          console.error('[AddSessionModal] Image save failed:', saveError)
           
-          let errorMessage = 'Image Upload Failed\n\n'
-          if (imageError instanceof Error) {
-            const errMsg = imageError.message.toLowerCase()
-            
-            if (errMsg.includes('too large') || errMsg.includes('compression')) {
-              errorMessage += imageError.message
-            } else if (errMsg.includes('canvas') || errMsg.includes('context')) {
-              errorMessage += 'Your device does not support image processing. Try a different browser.'
-            } else if (errMsg.includes('blob')) {
-              errorMessage += 'Image conversion failed on your device. Try a different image or browser.'
-            } else if (errMsg.includes('network') || errMsg.includes('connection')) {
-              errorMessage += 'Network error. Please check your internet connection.'
-            } else if (errMsg.includes('permission')) {
-              errorMessage += 'Permission denied. Please check your browser settings.'
-            } else {
-              errorMessage += imageError.message
-            }
-          } else {
-              errorMessage += 'Unknown error occurred during image processing.'
-          }
-          
-          // ASK USER: Do they want to save without image?
           const userChoice = window.confirm(
-            errorMessage + 
-            '\n\nDo you want to save the session WITHOUT the image?\n\n' +
+            'Failed to save image. This is likely a network issue.\n\n' +
+            'Do you want to save the session WITHOUT the image?\n\n' +
             '• Click OK to save without image\n' +
-            '• Click Cancel to go back and fix the issue'
+            '• Click Cancel to go back and try again'
           )
           
           if (!userChoice) {
-            // User chose to cancel - keep all data and stop saving
             setSaving(false)
             return
           }
           
-          // User chose to continue without image
           imageId = undefined
         }
       }
@@ -306,8 +283,8 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
     }
   }
 
-  // Handle image selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle image selection - compress immediately on pick
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     
@@ -318,17 +295,51 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       return
     }
     
-    // Set file and show preview
-    setSelectedImage(file)
-    const reader = new FileReader()
-    reader.onload = () => setImagePreview(reader.result as string)
-    reader.readAsDataURL(file)
+    // Compress immediately
+    setCompressing(true)
+    setImageFileName(file.name)
+    
+    try {
+      const base64 = await compressImageToBase64(file)
+      
+      // Calculate compressed size
+      const base64Data = base64.split(',')[1] || ''
+      const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0
+      const sizeBytes = (base64Data.length * 3) / 4 - padding
+      
+      setCompressedBase64(base64)
+      setCompressedSizeKB(Math.round((sizeBytes / 1024) * 10) / 10)
+    } catch (error) {
+      console.error('[AddSessionModal] Compression failed:', error)
+      
+      let errorMessage = 'Image compression failed.\n\n'
+      if (error instanceof Error) {
+        const errMsg = error.message.toLowerCase()
+        if (errMsg.includes('canvas') || errMsg.includes('context')) {
+          errorMessage += 'Your device does not support image processing. Try a different browser.'
+        } else if (errMsg.includes('too large')) {
+          errorMessage += error.message
+        } else {
+          errorMessage += error.message
+        }
+      } else {
+        errorMessage += 'Unknown error occurred.'
+      }
+      
+      alert(errorMessage)
+      setCompressedBase64('')
+      setImageFileName('')
+      setCompressedSizeKB(0)
+    } finally {
+      setCompressing(false)
+    }
   }
 
   // Remove selected image
   const handleRemoveImage = () => {
-    setSelectedImage(null)
-    setImagePreview('')
+    setCompressedBase64('')
+    setImageFileName('')
+    setCompressedSizeKB(0)
   }
 
   // Reset state when modal opens/closes
@@ -336,8 +347,10 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
     if (isOpen) {
       setDescription('')
       setTagValues({})
-      setSelectedImage(null)
-      setImagePreview('')
+      setCompressedBase64('')
+      setCompressing(false)
+      setImageFileName('')
+      setCompressedSizeKB(0)
       setSaving(false) // Reset saving state from previous save
       setCurrentLocation(null)
       setLocationLoading(false)
@@ -710,7 +723,22 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               Add Photo (optional)
             </label>
             
-            {!imagePreview ? (
+            {compressing ? (
+              <div className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary-400 dark:border-primary-600 rounded-xl bg-primary-50 dark:bg-primary-900/20">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <svg className="animate-spin w-8 h-8 mb-2 text-primary-600 dark:text-primary-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                    Compressing image...
+                  </p>
+                  <p className="text-xs text-primary-500 dark:text-primary-500 mt-1">
+                    {imageFileName}
+                  </p>
+                </div>
+              </div>
+            ) : !compressedBase64 ? (
               <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <svg className="w-8 h-8 mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -733,7 +761,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
             ) : (
               <div className="relative">
                 <img
-                  src={imagePreview}
+                  src={compressedBase64}
                   alt="Preview"
                   className="w-full h-48 object-cover rounded-xl"
                 />
@@ -746,8 +774,9 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
-                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {selectedImage?.name} ({(selectedImage!.size / 1024).toFixed(1)} KB)
+                <div className="mt-2 flex items-center gap-2 text-xs">
+                  <span className="text-gray-500 dark:text-gray-400">{imageFileName}</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">✓ Compressed ({compressedSizeKB} KB)</span>
                 </div>
               </div>
             )}
@@ -785,7 +814,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           </button>
           <button
             onClick={saveSession}
-            disabled={(!description.trim() && Object.keys(tagValues).length === 0 && !selectedImage && !audioBlob) || saving}
+            disabled={(!description.trim() && Object.keys(tagValues).length === 0 && !compressedBase64 && !audioBlob) || saving || compressing}
             className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {saving ? (
