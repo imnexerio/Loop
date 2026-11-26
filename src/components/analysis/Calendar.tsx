@@ -1,24 +1,33 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getMonthDaysWithSessionsCached } from '../../services/dataManager'
+import { useSessionsInRange } from '../../hooks/useSessionsInRange'
+import { calendarIntensities } from '../../tagTypes/stats'
+import { TAG_TYPE_ORDER, getTagTypeMeta } from '../../tagTypes/registry'
+import { Tag } from '../../types'
 import { 
   getFirstDayOfMonthUTC, 
   getDaysInMonthUTC,
   getMonthName,
-  getDateInTimezone,
-  getCurrentTimezone
+  getLocalToday
 } from '../../utils/dateUtils'
 
 interface CalendarProps {
   onDateSelect: (date: string) => void
   selectedDate: string | null
+  tags: Tag[]
+  /** Tag whose values shade each day, or null for plain session dots */
+  colorBy: string | null
+  onColorByChange: (tagId: string | null) => void
 }
 
-const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
+const pad2 = (n: number) => n.toString().padStart(2, '0')
+
+const Calendar = ({ onDateSelect, selectedDate, tags, colorBy, onColorByChange }: CalendarProps) => {
   const { currentUser } = useAuth()
   
   // Get today's date in user's local timezone
-  const todayStr = useMemo(() => getDateInTimezone(Date.now(), getCurrentTimezone()), [])
+  const [todayStr] = useState(getLocalToday)
   
   // Parse today's date to get initial year/month (user's local timezone)
   const [todayYear, todayMonth] = useMemo(() => {
@@ -29,6 +38,31 @@ const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
   const [currentYear, setCurrentYear] = useState(todayYear)
   const [currentMonth, setCurrentMonth] = useState(todayMonth)
   const [daysWithSessions, setDaysWithSessions] = useState<Set<string>>(new Set())
+
+  // Show the month of a date selected from elsewhere (e.g. a note in Insights)
+  const [shownSelection, setShownSelection] = useState(selectedDate)
+  if (selectedDate !== shownSelection) {
+    setShownSelection(selectedDate)
+    if (selectedDate) {
+      const [y, m] = selectedDate.split('-').map(Number)
+      setCurrentYear(y)
+      setCurrentMonth(m - 1)
+    }
+  }
+
+  // Shade days by the chosen tag
+  const colorTag = tags.find((t) => t.id === colorBy) ?? null
+  const monthStart = `${currentYear}-${pad2(currentMonth + 1)}-01`
+  const monthEnd = `${currentYear}-${pad2(currentMonth + 1)}-${pad2(getDaysInMonthUTC(currentYear, currentMonth))}`
+  const monthData = useSessionsInRange(colorTag ? monthStart : null, colorTag ? monthEnd : null)
+  const intensities = useMemo(
+    () => (colorTag && !monthData.loading ? calendarIntensities(colorTag, monthData.dates, monthData.byDate) : {}),
+    [colorTag, monthData.loading, monthData.dates, monthData.byDate]
+  )
+  const tagsByType = useMemo(
+    () => TAG_TYPE_ORDER.map((type) => ({ type, tags: tags.filter((t) => t.type === type) })).filter((g) => g.tags.length > 0),
+    [tags]
+  )
 
   // Load days with sessions for current month
   useEffect(() => {
@@ -112,11 +146,15 @@ const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
     return dateStr === selectedDate
   }
 
+  const dateOf = (day: number) => `${currentYear}-${pad2(currentMonth + 1)}-${pad2(day)}`
+
   const hasSession = (day: number) => {
     if (day < 0) return false
-    const dayStr = day.toString().padStart(2, '0')
-    return daysWithSessions.has(dayStr)
+    // Month query keys are full YYYY-MM-DD dates
+    return daysWithSessions.has(dateOf(day))
   }
+
+  const intensityOf = (day: number): number | undefined => (day < 0 ? undefined : intensities[dateOf(day)])
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6">
@@ -147,6 +185,28 @@ const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
         </div>
       </div>
 
+      {/* Color by tag */}
+      {tags.length > 0 && (
+        <div className="flex items-center gap-2 mb-3 text-sm">
+          <label htmlFor="calendar-color-by" className="text-gray-600 dark:text-gray-400">Color by</label>
+          <select
+            id="calendar-color-by"
+            value={colorTag?.id ?? ''}
+            onChange={(e) => onColorByChange(e.target.value || null)}
+            className="flex-1 min-w-0 px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
+          >
+            <option value="">Sessions</option>
+            {tagsByType.map((group) => (
+              <optgroup key={group.type} label={getTagTypeMeta(group.type).groupLabel}>
+                {group.tags.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Week Days Header */}
       <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
         {weekDays.map((day) => (
@@ -165,17 +225,24 @@ const Calendar = ({ onDateSelect, selectedDate }: CalendarProps) => {
           if (day === null) return null
           const isOtherMonth = day < 0
           const displayDay = isOtherMonth ? Math.abs(day) : day
+          const intensity = intensityOf(day)
+          const shade = intensity !== undefined && !isSelected(day as number)
+            ? { backgroundColor: `rgba(34, 197, 94, ${(0.2 + 0.6 * intensity).toFixed(2)})` }
+            : undefined
 
           return (
             <button
               key={index}
               onClick={() => !isOtherMonth && handleDateClick(day as number)}
               disabled={isOtherMonth}
+              style={shade}
               className={`
                 relative aspect-square flex items-center justify-center rounded-lg text-xs sm:text-sm font-medium
                 transition-all duration-200
                 ${isOtherMonth 
                   ? 'text-gray-300 dark:text-gray-700 cursor-not-allowed' 
+                  : isToday(day as number) && !isSelected(day as number) && shade
+                    ? 'text-gray-900 dark:text-white border-2 border-primary-500 font-bold'
                   : isToday(day as number) && !isSelected(day as number)
                     ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border-2 border-primary-500 font-bold'
                     : isSelected(day as number)

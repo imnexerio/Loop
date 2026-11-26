@@ -1,41 +1,43 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import Calendar from './analysis/Calendar'
 import DayView from './analysis/DayView'
-import Charts from './analysis/Charts'
-import ClockCharts from './analysis/ClockCharts'
+import InsightsSection from './insights/InsightsSection'
+import { useInsightsPrefs } from './insights/prefs'
 import { Tag } from '../types'
-import { getDateInTimezone, getCurrentTimezone } from '../utils/dateUtils'
+import { getLocalToday } from '../utils/dateUtils'
 
 interface AnalysisTabProps {
   tags: Tag[]
   onAddSession: () => void
+  onOpenProfile: () => void
 }
 
-const AnalysisTab = ({ tags, onAddSession }: AnalysisTabProps) => {
-  // Initialize with today's date in user's timezone
-  const today = getDateInTimezone(Date.now(), getCurrentTimezone())
+const AnalysisTab = ({ tags, onAddSession, onOpenProfile }: AnalysisTabProps) => {
+  // Today in the user's timezone, fixed for the life of the tab
+  const [today] = useState(getLocalToday)
   const [selectedDate, setSelectedDate] = useState<string | null>(today)
+  const [prefs, updatePrefs] = useInsightsPrefs()
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auto-select today's date on mount
-  useEffect(() => {
-    setSelectedDate(today)
+  // Jump to a date picked from Insights (e.g. a note entry) and bring the day view into view
+  const handleInsightDate = useCallback((date: string) => {
+    setSelectedDate(date)
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  const handleDateSelect = (date: string) => {
-    // If clicking the same date, keep it selected (don't toggle)
-    setSelectedDate(date)
-  }
-
   return (
-    <div className="fixed inset-0 top-16 left-0 right-0 bottom-16 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+    <div ref={scrollRef} className="fixed inset-0 top-16 left-0 right-0 bottom-16 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Desktop: Side by Side Layout, Mobile: Stacked */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-start">
           {/* Left Column: Calendar */}
           <div className="h-full">
             <Calendar
-              onDateSelect={handleDateSelect}
+              onDateSelect={setSelectedDate}
               selectedDate={selectedDate}
+              tags={tags}
+              colorBy={prefs.calendarColorBy}
+              onColorByChange={(tagId) => updatePrefs({ calendarColorBy: tagId })}
             />
           </div>
 
@@ -66,11 +68,15 @@ const AnalysisTab = ({ tags, onAddSession }: AnalysisTabProps) => {
           </div>
         </div>
 
-        {/* Charts Section - Full Width */}
-        <Charts tags={tags} />
-
-        {/* Clock Time Charts Section - Full Width */}
-        <ClockCharts tags={tags} />
+        {/* Every tag, visualized by its type */}
+        <InsightsSection
+          tags={tags}
+          today={today}
+          prefs={prefs}
+          onPrefsChange={updatePrefs}
+          onSelectDate={handleInsightDate}
+          onOpenProfile={onOpenProfile}
+        />
       </div>
     </div>
   )

@@ -5,6 +5,7 @@ import { getImage, getAudio } from '../../services/dataManager'
 import ImageViewer from '../ImageViewer'
 import { formatTimeInTimezone, getTimezoneAbbreviation } from '../../utils/dateUtils'
 import { formatLocationShort, getGoogleMapsUrl } from '../../utils/locationUtils'
+import { formatTagValue } from '../../tagTypes/registry'
 
 interface SessionCardProps {
   session: Session
@@ -161,26 +162,6 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
 
   const getTagById = (tagId: string) => {
     return tags.find(t => t.id === tagId)
-  }
-
-  const renderTagValue = (tag: Tag, value: any) => {
-    switch (tag.type) {
-      case 'number':
-        return `${value}${tag.config.unit ? ' ' + tag.config.unit : ''}`
-      case 'rating':
-        return `${value}/${tag.config.max || 5}`
-      case 'checkbox':
-        return value ? '✓' : '✗'
-      case 'text':
-        return value
-      case 'clocktime':
-        if (value && typeof value === 'object' && 'hour' in value && 'minute' in value) {
-          return `${String(value.hour).padStart(2, '0')}:${String(value.minute).padStart(2, '0')}`
-        }
-        return value
-      default:
-        return value
-    }
   }
 
   // Check if card has expandable content
@@ -357,7 +338,7 @@ const SessionCard = ({ session, tags }: SessionCardProps) => {
             const tag = getTagById(tagId)
             if (!tag) return null
 
-            const displayValue = renderTagValue(tag, value)
+            const displayValue = formatTagValue(tag, value)
 
             return (
               <div

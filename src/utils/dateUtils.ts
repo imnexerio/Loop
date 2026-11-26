@@ -254,3 +254,43 @@ export function getTimezoneAbbreviation(timezone: string, timestamp?: number): s
     return timezone
   }
 }
+
+// ============================================
+// DATE STRING ARITHMETIC (YYYY-MM-DD)
+// ============================================
+
+/**
+ * Today's date (YYYY-MM-DD) in the user's current timezone.
+ * Sessions are filed under this local date, so ranges should start from it.
+ */
+export function getLocalToday(): string {
+  return getDateInTimezone(Date.now(), getCurrentTimezone())
+}
+
+/**
+ * Add (or subtract) whole days to a YYYY-MM-DD string
+ */
+export function addDaysToDateString(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day + days))
+  return getDateStringUTC(date)
+}
+
+/**
+ * All YYYY-MM-DD strings from start to end, inclusive
+ */
+export function listDatesBetween(start: string, end: string): string[] {
+  const dates: string[] = []
+  for (let d = start; d <= end; d = addDaysToDateString(d, 1)) {
+    dates.push(d)
+  }
+  return dates
+}
+
+/**
+ * Day of week (0 = Sunday) for a YYYY-MM-DD string
+ */
+export function getWeekdayOfDateString(dateStr: string): number {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+}

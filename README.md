@@ -21,12 +21,19 @@ A modern Progressive Web App for tracking daily habits and sessions with custom 
 ### 📅 **Analysis Tab**
 - **Interactive Calendar** - Month view with session indicators
 - **Day View** - Grid display of all sessions for selected date with quick add button
-- **Advanced Charts** - Visualize habit data with Recharts
-  - Line, Bar, and Area chart types
-  - Multiple metrics comparison (up to 8 colors)
-  - Aggregation options (average, sum, min, max)
-  - Flexible date ranges (7, 14, 30 days)
-  - Chart preferences saved to localStorage
+- **Color by tag** - Shade calendar days by any tag (habit done, number/rating value, time or note logged)
+- **Insights** - One card per tag, visualized by its type
+  - Habits (Yes/No): day grid, current streak, completion rate
+  - Numbers: trend line, average, change vs the previous period
+  - Ratings: score distribution and average
+  - Clock times: average time and consistency, correct across midnight
+  - Notes (Text): entry count and latest note
+  - Filter chips for the tag types you use; cards sorted by how much you use them
+  - Pin cards to the top; unused tags collapse into their own section
+  - Date ranges of 7, 30 or 90 days, saved to localStorage
+- **Tag Detail** - Tap a card for the full view: Line/Bar/Area charts with daily
+  average/total/min/max, habit heatmap with weekday breakdown, clock time trends,
+  and searchable notes that jump to their day
 - **Side-by-Side Layout** - Desktop: Calendar + Day View, Mobile: Stacked
 
 ### 💬 **AI Chat Assistant**
