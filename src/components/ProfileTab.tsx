@@ -405,7 +405,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
                   type="text"
                   value={newTag.name}
                   onChange={(e) => setNewTag({ ...newTag, name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
                   placeholder="e.g., Mood, Energy, Water"
                 />
               </div>
@@ -417,7 +417,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
                 <select
                   value={newTag.type}
                   onChange={(e) => setNewTag({ ...newTag, type: e.target.value as TagType })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
                 >
                   <option value="number">Number (with range)</option>
                   <option value="rating">Rating (stars)</option>
@@ -437,7 +437,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
                       type="number"
                       value={newTag.min}
                       onChange={(e) => setNewTag({ ...newTag, min: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
                     />
                   </div>
                   <div>
@@ -448,7 +448,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
                       type="number"
                       value={newTag.max}
                       onChange={(e) => setNewTag({ ...newTag, max: parseInt(e.target.value) || 10 })}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
                     />
                   </div>
                 </div>
@@ -463,7 +463,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
                     type="text"
                     value={newTag.unit}
                     onChange={(e) => setNewTag({ ...newTag, unit: e.target.value })}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
                     placeholder="e.g., glasses, kg, hours"
                   />
                 </div>

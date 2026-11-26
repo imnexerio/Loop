@@ -281,7 +281,7 @@ const PinSetupModal = ({
               key={i}
               onClick={() => handleKeyPress(key)}
               disabled={isProcessing || currentPinDisplay.length >= PIN_LENGTH}
-              className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 text-xl font-semibold text-gray-900 dark:text-white transition-all duration-150 disabled:opacity-50 shadow-sm active:scale-95"
+              className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 text-xl font-semibold text-gray-900 dark:text-white transition-all duration-150 disabled:opacity-50 shadow-xs active:scale-95"
             >
               {key}
             </button>

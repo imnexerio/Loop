@@ -460,7 +460,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                 type="checkbox"
                 checked={value || false}
                 onChange={(e) => handleTagChange(tag.id, e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                className="w-5 h-5 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
               />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {tag.name}
@@ -479,7 +479,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               type="text"
               value={value || ''}
               onChange={(e) => handleTagChange(tag.id, e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden"
               placeholder={`Enter ${tag.name.toLowerCase()}`}
             />
           </div>
@@ -505,7 +505,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                 }}
                 onMouseDown={blurFocusedInput}
                 onTouchStart={blurFocusedInput}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden"
               >
                 <option value="">Hour</option>
                 {Array.from({ length: 24 }, (_, i) => (
@@ -530,7 +530,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                 }}
                 onMouseDown={blurFocusedInput}
                 onTouchStart={blurFocusedInput}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden"
               >
                 <option value="">Min</option>
                 {Array.from({ length: 60 }, (_, i) => (
@@ -647,7 +647,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden resize-none"
                 placeholder={tags.length > 0 ? "Optional - describe what you're doing..." : "I am working on..."}
               />
               
