@@ -141,9 +141,13 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
     
     const newSettings = { ...settings, trackLocation: newValue }
     setSettings(newSettings)
-    
+
     try {
-      await updateUserProfile(currentUser.uid, { settings: newSettings })
+      const latestProfile = await getUserProfile(currentUser.uid)
+      const latestSettings = latestProfile?.settings ?? settings
+      const mergedSettings = { ...latestSettings, trackLocation: newValue }
+      await updateUserProfile(currentUser.uid, { settings: mergedSettings })
+      setSettings(mergedSettings)
     } catch (error) {
       console.error('Error updating location setting:', error)
       // Revert on error

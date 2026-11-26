@@ -48,7 +48,8 @@ const PinSetupModal = ({
       return step === 'enter' ? pin : confirmPin
     } else if (mode === 'change') {
       if (step === 'enter') return currentPin
-      return confirmPin === '' ? pin : confirmPin
+      // Fill the new PIN first; only move to confirm once it has all digits
+      return pin.length < PIN_LENGTH ? pin : confirmPin
     } else {
       return currentPin
     }
@@ -60,7 +61,7 @@ const PinSetupModal = ({
       else setConfirmPin(value)
     } else if (mode === 'change') {
       if (step === 'enter') setCurrentPin(value)
-      else if (pin === '' || confirmPin !== '') setPin(value)
+      else if (pin.length < PIN_LENGTH) setPin(value)
       else setConfirmPin(value)
     } else {
       setCurrentPin(value)
@@ -132,6 +133,8 @@ const PinSetupModal = ({
             } catch (err: any) {
               setError(err.message || 'Failed to change PIN')
               triggerShake()
+              // Clear confirm so the keypad is usable again for a retry
+              setConfirmPin('')
             } finally {
               setIsProcessing(false)
             }
@@ -217,7 +220,7 @@ const PinSetupModal = ({
     }
     if (mode === 'change') {
       if (step === 'enter') return 'Enter current PIN'
-      if (pin === '' || (pin.length === PIN_LENGTH && confirmPin !== '')) return 'Enter new PIN'
+      if (pin.length < PIN_LENGTH) return 'Enter new PIN'
       return 'Confirm new PIN'
     }
     return 'Enter current PIN to remove'
@@ -349,8 +352,8 @@ const PinSetupModal = ({
               {mode === 'change' && (
                 <>
                   <div className={`w-2 h-2 rounded-full ${step === 'enter' ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                  <div className={`w-2 h-2 rounded-full ${step === 'confirm' && (pin === '' || confirmPin !== '') ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                  <div className={`w-2 h-2 rounded-full ${step === 'confirm' && pin.length === PIN_LENGTH && confirmPin === '' ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                  <div className={`w-2 h-2 rounded-full ${step === 'confirm' && pin.length < PIN_LENGTH ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                  <div className={`w-2 h-2 rounded-full ${step === 'confirm' && pin.length === PIN_LENGTH ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
                 </>
               )}
             </div>
