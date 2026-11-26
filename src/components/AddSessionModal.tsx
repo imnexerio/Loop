@@ -15,6 +15,12 @@ interface AddSessionModalProps {
   onSessionAdded: () => void
 }
 
+// Local hour/minute for a clock-time tag (defaults to right now)
+const getClockTime = (ms: number = Date.now()) => {
+  const d = new Date(ms)
+  return { hour: d.getHours(), minute: d.getMinutes() }
+}
+
 const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }: AddSessionModalProps) => {
   const { currentUser } = useAuth()
   const [description, setDescription] = useState('')
@@ -29,6 +35,8 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
   const [trackLocation, setTrackLocation] = useState(false)
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null)
   const [locationLoading, setLocationLoading] = useState(false)
+  // Clock-time tags whose "Now" box is ticked; their value is refreshed to the save time
+  const [nowTagIds, setNowTagIds] = useState<Set<string>>(new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Voice recorder with real-time transcription + audio capture
@@ -200,10 +208,16 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       // Get the date in user's timezone (session belongs to the day in their local time)
       const dateInUserTimezone = getDateInTimezone(timestamp, userTimezone)
       
+      // Clock-time tags marked "Now" get the exact save time
+      const finalTagValues = { ...tagValues }
+      nowTagIds.forEach(tagId => {
+        finalTagValues[tagId] = getClockTime(timestamp)
+      })
+
       const session: any = {
         timestamp: timestamp.toString(),
         timezone: userTimezone,
-        tags: tagValues
+        tags: finalTagValues
       }
       
       // Add location if tracking is enabled and we have coordinates
@@ -354,7 +368,8 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       setSaving(false) // Reset saving state from previous save
       setCurrentLocation(null)
       setLocationLoading(false)
-      
+      setNowTagIds(new Set())
+
       // Focus textarea only once when modal opens (not on every re-render)
       setTimeout(() => {
         textareaRef.current?.focus()
@@ -378,6 +393,20 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       ...prev,
       [tagId]: value
     }))
+  }
+
+  // Tick "Now": fill in the current time and lock the selectors.
+  // Untick: keep the filled-in time so it can be adjusted manually.
+  const handleNowToggle = (tagId: string, checked: boolean) => {
+    setNowTagIds(prev => {
+      const next = new Set(prev)
+      if (checked) next.add(tagId)
+      else next.delete(tagId)
+      return next
+    })
+    if (checked) {
+      handleTagChange(tagId, getClockTime())
+    }
   }
   
   // Handle slider interaction with proper focus management
@@ -485,16 +514,30 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
           </div>
         )
 
-      case 'clocktime':
+      case 'clocktime': {
+        const isNow = nowTagIds.has(tag.id)
         return (
           <div key={tag.id} className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {tag.name}
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {tag.name}
+              </label>
+              {/* "Now" option - uses the time the session is saved */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isNow}
+                  onChange={(e) => handleNowToggle(tag.id, e.target.checked)}
+                  className="w-4 h-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Now</span>
+              </label>
+            </div>
             <div className="flex gap-2 items-center">
               {/* Hour Selector */}
               <select
                 value={value?.hour ?? ''}
+                disabled={isNow}
                 onChange={(e) => {
                   const hour = e.target.value ? parseInt(e.target.value) : null
                   if (hour !== null) {
@@ -505,7 +548,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                 }}
                 onMouseDown={blurFocusedInput}
                 onTouchStart={blurFocusedInput}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden"
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Hour</option>
                 {Array.from({ length: 24 }, (_, i) => (
@@ -520,6 +563,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               {/* Minute Selector */}
               <select
                 value={value?.minute ?? ''}
+                disabled={isNow}
                 onChange={(e) => {
                   const minute = e.target.value ? parseInt(e.target.value) : null
                   if (minute !== null && value?.hour !== undefined) {
@@ -530,7 +574,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                 }}
                 onMouseDown={blurFocusedInput}
                 onTouchStart={blurFocusedInput}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden"
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Min</option>
                 {Array.from({ length: 60 }, (_, i) => (
@@ -539,7 +583,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                   </option>
                 ))}
               </select>
-              
+
               {/* Display selected time */}
               {value?.hour !== undefined && value?.minute !== undefined && (
                 <div className="ml-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg min-w-[70px] text-center">
@@ -551,6 +595,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
             </div>
           </div>
         )
+      }
 
       default:
         return null
