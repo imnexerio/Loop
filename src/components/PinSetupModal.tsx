@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
+import { PIN_MIN_LENGTH, PIN_MAX_LENGTH, PIN_LENGTH_HINT, shouldEnterSubmitPin } from '../utils/pinUtils'
 
 type ModalMode = 'setup' | 'change' | 'remove'
-type SetupStep = 'enter' | 'confirm'
+type Step = 'current' | 'new' | 'confirm'
 
 interface PinSetupModalProps {
   isOpen: boolean
@@ -10,9 +11,15 @@ interface PinSetupModalProps {
   onSetupPin: (pin: string) => Promise<void>
   onChangePin: (currentPin: string, newPin: string) => Promise<{ success: boolean; error?: string }>
   onRemovePin: (currentPin: string) => Promise<{ success: boolean; error?: string }>
+  onVerifyCurrentPin: (pin: string) => Promise<boolean>
 }
 
-const PIN_LENGTH = 4
+// The steps each mode walks through, in order
+const STEPS: Record<ModalMode, Step[]> = {
+  setup: ['new', 'confirm'],
+  change: ['current', 'new', 'confirm'],
+  remove: ['current']
+}
 
 const PinSetupModal = ({
   isOpen,
@@ -20,173 +27,133 @@ const PinSetupModal = ({
   onClose,
   onSetupPin,
   onChangePin,
-  onRemovePin
+  onRemovePin,
+  onVerifyCurrentPin
 }: PinSetupModalProps) => {
-  const [step, setStep] = useState<SetupStep>('enter')
-  const [pin, setPin] = useState('')
-  const [confirmPin, setConfirmPin] = useState('')
+  const steps = STEPS[mode]
+  const [step, setStep] = useState<Step>(steps[0])
+  // Digits typed for the step on screen
+  const [entry, setEntry] = useState('')
+  // Values carried over from earlier steps
   const [currentPin, setCurrentPin] = useState('')
+  const [newPin, setNewPin] = useState('')
   const [error, setError] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [shake, setShake] = useState(false)
 
-  // Reset state when modal opens/closes
+  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setPin('')
-      setConfirmPin('')
+      setStep(STEPS[mode][0])
+      setEntry('')
       setCurrentPin('')
+      setNewPin('')
       setError('')
-      setStep('enter')
       setIsProcessing(false)
     }
-  }, [isOpen])
-
-  // Get current active PIN field based on mode and step
-  const getCurrentPin = () => {
-    if (mode === 'setup') {
-      return step === 'enter' ? pin : confirmPin
-    } else if (mode === 'change') {
-      if (step === 'enter') return currentPin
-      // Fill the new PIN first; only move to confirm once it has all digits
-      return pin.length < PIN_LENGTH ? pin : confirmPin
-    } else {
-      return currentPin
-    }
-  }
-
-  const setCurrentPinValue = (value: string) => {
-    if (mode === 'setup') {
-      if (step === 'enter') setPin(value)
-      else setConfirmPin(value)
-    } else if (mode === 'change') {
-      if (step === 'enter') setCurrentPin(value)
-      else if (pin.length < PIN_LENGTH) setPin(value)
-      else setConfirmPin(value)
-    } else {
-      setCurrentPin(value)
-    }
-  }
-
-  // Auto-advance logic
-  useEffect(() => {
-    const currentValue = getCurrentPin()
-    if (currentValue.length === PIN_LENGTH && !isProcessing) {
-      handlePinComplete()
-    }
-  }, [pin, confirmPin, currentPin])
-
-  const handlePinComplete = async () => {
-    setError('')
-
-    if (mode === 'setup') {
-      if (step === 'enter') {
-        setStep('confirm')
-      } else {
-        // Confirm step
-        if (pin === confirmPin) {
-          setIsProcessing(true)
-          try {
-            await onSetupPin(pin)
-            onClose()
-          } catch (err: any) {
-            setError(err.message || 'Failed to set PIN')
-            triggerShake()
-            setConfirmPin('')
-          } finally {
-            setIsProcessing(false)
-          }
-        } else {
-          setError('PINs do not match. Try again.')
-          triggerShake()
-          setConfirmPin('')
-        }
-      }
-    } else if (mode === 'change') {
-      if (step === 'enter') {
-        // Current PIN entered, move to new PIN
-        setStep('confirm')
-        setPin('')
-        setConfirmPin('')
-      } else {
-        // In the new PIN flow
-        if (pin.length === PIN_LENGTH && confirmPin === '') {
-          // New PIN entered, now need to confirm
-          // Just wait for confirm PIN to be entered
-        } else if (pin.length === PIN_LENGTH && confirmPin.length === PIN_LENGTH) {
-          // Both entered, verify they match
-          if (pin === confirmPin) {
-            setIsProcessing(true)
-            try {
-              const result = await onChangePin(currentPin, pin)
-              if (result.success) {
-                onClose()
-              } else {
-                setError(result.error || 'Failed to change PIN')
-                triggerShake()
-                // Reset to beginning
-                setStep('enter')
-                setCurrentPin('')
-                setPin('')
-                setConfirmPin('')
-              }
-            } catch (err: any) {
-              setError(err.message || 'Failed to change PIN')
-              triggerShake()
-              // Clear confirm so the keypad is usable again for a retry
-              setConfirmPin('')
-            } finally {
-              setIsProcessing(false)
-            }
-          } else {
-            setError('New PINs do not match. Try again.')
-            triggerShake()
-            setPin('')
-            setConfirmPin('')
-          }
-        }
-      }
-    } else if (mode === 'remove') {
-      setIsProcessing(true)
-      try {
-        const result = await onRemovePin(currentPin)
-        if (result.success) {
-          onClose()
-        } else {
-          setError(result.error || 'Incorrect PIN')
-          triggerShake()
-          setCurrentPin('')
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to remove PIN')
-        triggerShake()
-        setCurrentPin('')
-      } finally {
-        setIsProcessing(false)
-      }
-    }
-  }
+  }, [isOpen, mode])
 
   const triggerShake = () => {
     setShake(true)
     setTimeout(() => setShake(false), 500)
   }
 
+  const fail = (message: string) => {
+    setError(message)
+    triggerShake()
+    setEntry('')
+  }
+
+  const canSubmit = entry.length >= PIN_MIN_LENGTH && !isProcessing
+
+  // Runs when OK (or Enter) is pressed for the step on screen.
+  // Nothing advances on its own, so every digit stays visible until then.
+  const handleSubmit = useCallback(async () => {
+    if (entry.length < PIN_MIN_LENGTH || isProcessing) return
+    setError('')
+
+    if (step === 'current') {
+      setIsProcessing(true)
+      try {
+        if (mode === 'remove') {
+          const result = await onRemovePin(entry)
+          if (result.success) {
+            onClose()
+          } else {
+            fail(result.error || 'Incorrect PIN')
+          }
+        } else {
+          // Change: check the current PIN before asking for a new one
+          const isValid = await onVerifyCurrentPin(entry)
+          if (isValid) {
+            setCurrentPin(entry)
+            setEntry('')
+            setStep('new')
+          } else {
+            fail('Current PIN is incorrect')
+          }
+        }
+      } catch (err: any) {
+        fail(err.message || (mode === 'remove' ? 'Failed to remove PIN' : 'Failed to check PIN'))
+      } finally {
+        setIsProcessing(false)
+      }
+      return
+    }
+
+    if (step === 'new') {
+      setNewPin(entry)
+      setEntry('')
+      setStep('confirm')
+      return
+    }
+
+    // Confirm step
+    if (entry !== newPin) {
+      fail('PINs do not match. Enter the new PIN again.')
+      setNewPin('')
+      setStep('new')
+      return
+    }
+
+    setIsProcessing(true)
+    try {
+      if (mode === 'setup') {
+        await onSetupPin(newPin)
+        onClose()
+      } else {
+        const result = await onChangePin(currentPin, newPin)
+        if (result.success) {
+          onClose()
+        } else {
+          // e.g. the PIN was changed on another device - start over
+          fail(result.error || 'Failed to change PIN')
+          setCurrentPin('')
+          setNewPin('')
+          setStep('current')
+        }
+      }
+    } catch (err: any) {
+      // Keep the new PIN so the user only has to re-confirm to retry
+      fail(err.message || (mode === 'setup' ? 'Failed to set PIN' : 'Failed to change PIN'))
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [entry, isProcessing, step, mode, newPin, currentPin, onSetupPin, onChangePin, onRemovePin, onVerifyCurrentPin, onClose])
+
   const handleKeyPress = useCallback((digit: string) => {
-    const currentValue = getCurrentPin()
-    if (currentValue.length < PIN_LENGTH && !isProcessing) {
-      setCurrentPinValue(currentValue + digit)
+    if (entry.length < PIN_MAX_LENGTH && !isProcessing) {
+      setEntry(prev => prev + digit)
       setError('')
     }
-  }, [pin, confirmPin, currentPin, step, mode, isProcessing])
+  }, [entry.length, isProcessing])
 
   const handleDelete = useCallback(() => {
     if (!isProcessing) {
-      const currentValue = getCurrentPin()
-      setCurrentPinValue(currentValue.slice(0, -1))
+      setEntry(prev => prev.slice(0, -1))
       setError('')
     }
-  }, [pin, confirmPin, currentPin, step, mode, isProcessing])
+  }, [isProcessing])
 
   // Keyboard support
   useEffect(() => {
@@ -197,14 +164,18 @@ const PinSetupModal = ({
         handleKeyPress(e.key)
       } else if (e.key === 'Backspace') {
         handleDelete()
-      } else if (e.key === 'Escape') {
+      } else if (e.key === 'Enter' && shouldEnterSubmitPin(e)) {
+        // Stop Enter from also "clicking" whichever button has focus
+        e.preventDefault()
+        handleSubmit()
+      } else if (e.key === 'Escape' && !isProcessing) {
         onClose()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, handleKeyPress, handleDelete, onClose])
+  }, [isOpen, isProcessing, handleKeyPress, handleDelete, handleSubmit, onClose])
 
   if (!isOpen) return null
 
@@ -215,27 +186,25 @@ const PinSetupModal = ({
   }
 
   const getSubtitle = () => {
-    if (mode === 'setup') {
-      return step === 'enter' ? 'Enter a 4-digit PIN' : 'Confirm your PIN'
+    if (step === 'current') {
+      return mode === 'remove' ? 'Enter current PIN to remove' : 'Enter current PIN'
     }
-    if (mode === 'change') {
-      if (step === 'enter') return 'Enter current PIN'
-      if (pin.length < PIN_LENGTH) return 'Enter new PIN'
-      return 'Confirm new PIN'
+    if (step === 'new') {
+      return mode === 'setup' ? `Enter a PIN (${PIN_LENGTH_HINT})` : `Enter new PIN (${PIN_LENGTH_HINT})`
     }
-    return 'Enter current PIN to remove'
+    return mode === 'setup' ? 'Confirm your PIN' : 'Confirm new PIN'
   }
 
-  const currentPinDisplay = getCurrentPin()
-
   const renderPinDots = () => {
+    // Show the minimum number of slots, growing one dot per extra digit
+    const dotCount = Math.max(PIN_MIN_LENGTH, entry.length)
     return (
       <div className={`flex gap-4 justify-center mb-6 ${shake ? 'animate-shake' : ''}`}>
-        {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+        {Array.from({ length: dotCount }).map((_, i) => (
           <div
             key={i}
             className={`w-4 h-4 rounded-full transition-all duration-200 ${
-              i < currentPinDisplay.length
+              i < entry.length
                 ? 'bg-primary-600 dark:bg-primary-400 scale-110'
                 : 'bg-gray-300 dark:bg-gray-600'
             }`}
@@ -250,14 +219,23 @@ const PinSetupModal = ({
       ['1', '2', '3'],
       ['4', '5', '6'],
       ['7', '8', '9'],
-      ['', '0', 'del']
+      ['ok', '0', 'del']
     ]
 
     return (
-      <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
+      <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto" data-pin-keypad>
         {keys.flat().map((key, i) => {
-          if (key === '') {
-            return <div key={i} className="w-16 h-16" />
+          if (key === 'ok') {
+            return (
+              <button
+                key={i}
+                onClick={() => handleSubmit()}
+                disabled={!canSubmit}
+                className="w-16 h-16 rounded-full flex items-center justify-center bg-primary-600 hover:bg-primary-700 active:bg-primary-700 text-white text-base font-semibold transition-all duration-150 disabled:opacity-30 shadow-xs active:scale-95"
+              >
+                OK
+              </button>
+            )
           }
 
           if (key === 'del') {
@@ -265,7 +243,7 @@ const PinSetupModal = ({
               <button
                 key={i}
                 onClick={handleDelete}
-                disabled={isProcessing || currentPinDisplay.length === 0}
+                disabled={isProcessing || entry.length === 0}
                 className="w-16 h-16 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30"
                 aria-label="Delete"
               >
@@ -280,7 +258,7 @@ const PinSetupModal = ({
             <button
               key={i}
               onClick={() => handleKeyPress(key)}
-              disabled={isProcessing || currentPinDisplay.length >= PIN_LENGTH}
+              disabled={isProcessing || entry.length >= PIN_MAX_LENGTH}
               className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 text-xl font-semibold text-gray-900 dark:text-white transition-all duration-150 disabled:opacity-50 shadow-xs active:scale-95"
             >
               {key}
@@ -292,7 +270,7 @@ const PinSetupModal = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" data-pin-dialog>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -341,21 +319,14 @@ const PinSetupModal = ({
           )}
 
           {/* Progress indicator for multi-step flows */}
-          {mode !== 'remove' && (
+          {steps.length > 1 && (
             <div className="mt-6 flex justify-center gap-2">
-              {mode === 'setup' && (
-                <>
-                  <div className={`w-2 h-2 rounded-full ${step === 'enter' ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                  <div className={`w-2 h-2 rounded-full ${step === 'confirm' ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                </>
-              )}
-              {mode === 'change' && (
-                <>
-                  <div className={`w-2 h-2 rounded-full ${step === 'enter' ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                  <div className={`w-2 h-2 rounded-full ${step === 'confirm' && pin.length < PIN_LENGTH ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                  <div className={`w-2 h-2 rounded-full ${step === 'confirm' && pin.length === PIN_LENGTH ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                </>
-              )}
+              {steps.map(s => (
+                <div
+                  key={s}
+                  className={`w-2 h-2 rounded-full ${s === step ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                />
+              ))}
             </div>
           )}
         </div>

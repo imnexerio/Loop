@@ -15,7 +15,7 @@ interface ProfileTabProps {
 
 const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) => {
   const { currentUser, logout } = useAuth()
-  const { isPinEnabled, setupPin, changePin, removePin } = usePin()
+  const { isPinEnabled, setupPin, changePin, removePin, verifyCurrentPin } = usePin()
   const [showAddTag, setShowAddTag] = useState(false)
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
   const [uploadingPicture, setUploadingPicture] = useState(false)
@@ -551,6 +551,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
         onSetupPin={setupPin}
         onChangePin={changePin}
         onRemovePin={removePin}
+        onVerifyCurrentPin={verifyCurrentPin}
       />
     </div>
   )

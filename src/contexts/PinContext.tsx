@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { getUserProfile, updateUserProfile } from '../services/firebaseService'
+import { isValidPin, PIN_LENGTH_HINT } from '../utils/pinUtils'
 
 // Module-level variable for unlock state - resets on every page load/refresh
 // This ensures PIN is required on every new page load
@@ -214,6 +215,10 @@ export const PinProvider = ({ children }: PinProviderProps) => {
       throw new Error('Must be logged in to set up PIN')
     }
 
+    if (!isValidPin(pin)) {
+      throw new Error(`PIN must be ${PIN_LENGTH_HINT}`)
+    }
+
     const newPinHash = await hashPin(pin)
     
     // Get current profile to preserve other settings
@@ -243,6 +248,10 @@ export const PinProvider = ({ children }: PinProviderProps) => {
   const changePin = useCallback(async (currentPin: string, newPin: string): Promise<{ success: boolean; error?: string }> => {
     if (!currentUser) {
       return { success: false, error: 'Must be logged in' }
+    }
+
+    if (!isValidPin(newPin)) {
+      return { success: false, error: `PIN must be ${PIN_LENGTH_HINT}` }
     }
 
     // Verify current PIN first

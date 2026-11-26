@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { usePin } from '../contexts/PinContext'
 import { useAuth } from '../contexts/AuthContext'
+import { PIN_MIN_LENGTH, PIN_MAX_LENGTH, shouldEnterSubmitPin } from '../utils/pinUtils'
 
 const PinLockScreen = () => {
   const { verifyPin, forgotPin } = usePin()
@@ -13,17 +14,12 @@ const PinLockScreen = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [shake, setShake] = useState(false)
 
-  const PIN_LENGTH = 4
+  const canSubmit = pin.length >= PIN_MIN_LENGTH && !isVerifying
 
-  // Auto-verify when PIN length is reached
-  useEffect(() => {
-    if (pin.length === PIN_LENGTH) {
-      handleVerify()
-    }
-  }, [pin])
-
-  const handleVerify = async () => {
-    if (pin.length !== PIN_LENGTH || isVerifying) return
+  // Submitted with the OK button or Enter - PINs can be 4-8 digits,
+  // so there is no length at which to auto-submit
+  const handleVerify = useCallback(async () => {
+    if (pin.length < PIN_MIN_LENGTH || isVerifying) return
 
     setIsVerifying(true)
     setError('')
@@ -53,10 +49,10 @@ const PinLockScreen = () => {
     } finally {
       setIsVerifying(false)
     }
-  }
+  }, [pin, isVerifying, verifyPin])
 
   const handleKeyPress = useCallback((digit: string) => {
-    if (pin.length < PIN_LENGTH && !isVerifying) {
+    if (pin.length < PIN_MAX_LENGTH && !isVerifying) {
       setPin(prev => prev + digit)
       setError('')
     }
@@ -89,17 +85,23 @@ const PinLockScreen = () => {
         handleKeyPress(e.key)
       } else if (e.key === 'Backspace') {
         handleDelete()
+      } else if (e.key === 'Enter' && shouldEnterSubmitPin(e)) {
+        // Stop Enter from also "clicking" a focused keypad digit
+        e.preventDefault()
+        handleVerify()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyPress, handleDelete, showForgotConfirm])
+  }, [handleKeyPress, handleDelete, handleVerify, showForgotConfirm])
 
   const renderPinDots = () => {
+    // Show the minimum number of slots, growing one dot per extra digit
+    const dotCount = Math.max(PIN_MIN_LENGTH, pin.length)
     return (
       <div className={`flex gap-4 justify-center mb-8 ${shake ? 'animate-shake' : ''}`}>
-        {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+        {Array.from({ length: dotCount }).map((_, i) => (
           <div
             key={i}
             className={`w-4 h-4 rounded-full transition-all duration-200 ${
@@ -118,14 +120,23 @@ const PinLockScreen = () => {
       ['1', '2', '3'],
       ['4', '5', '6'],
       ['7', '8', '9'],
-      ['', '0', 'del']
+      ['ok', '0', 'del']
     ]
 
     return (
-      <div className="grid grid-cols-3 gap-4 max-w-xs mx-auto">
+      <div className="grid grid-cols-3 gap-4 max-w-xs mx-auto" data-pin-keypad>
         {keys.flat().map((key, i) => {
-          if (key === '') {
-            return <div key={i} className="w-20 h-20" />
+          if (key === 'ok') {
+            return (
+              <button
+                key={i}
+                onClick={() => handleVerify()}
+                disabled={!canSubmit}
+                className="w-20 h-20 rounded-full flex items-center justify-center bg-primary-600 hover:bg-primary-700 active:bg-primary-700 text-white text-lg font-semibold transition-all duration-150 disabled:opacity-30 shadow-xs active:scale-95"
+              >
+                OK
+              </button>
+            )
           }
 
           if (key === 'del') {
@@ -148,7 +159,7 @@ const PinLockScreen = () => {
             <button
               key={i}
               onClick={() => handleKeyPress(key)}
-              disabled={isVerifying || pin.length >= PIN_LENGTH}
+              disabled={isVerifying || pin.length >= PIN_MAX_LENGTH}
               className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 text-2xl font-semibold text-gray-900 dark:text-white transition-all duration-150 disabled:opacity-50 shadow-xs hover:shadow-md active:scale-95"
             >
               {key}
@@ -160,7 +171,7 @@ const PinLockScreen = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-linear-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-linear-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800" data-pin-dialog>
       {/* Logo */}
       <div className="mb-8 text-center">
         <img 
@@ -188,7 +199,7 @@ const PinLockScreen = () => {
             Enter PIN
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Enter your 4-digit PIN to unlock
+            Enter your PIN and tap OK to unlock
           </p>
         </div>
 
