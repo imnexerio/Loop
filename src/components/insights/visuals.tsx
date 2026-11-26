@@ -62,7 +62,8 @@ export const HabitGrid = ({ days, variant = 'compact' }: HabitGridProps) => {
     )
   }
 
-  const cols = days.length <= 15 ? days.length : days.length <= 30 ? 15 : 18
+  // One row for up to 15 days (7d, 14d), two rows of 15 for 30d
+  const cols = Math.min(days.length, 15)
   return (
     <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.max(cols, 1)}, minmax(0, 1fr))` }}>
       {days.map((d) => (

@@ -4,12 +4,15 @@ import type { AggregationType } from '../../tagTypes/stats'
 import type { TagType } from '../../types'
 import type { ChartType } from './details'
 
-export type RangeDays = 7 | 30 | 90
+/** The app keeps at most this many days of history */
+export const MAX_HISTORY_DAYS = 60
+
+export type RangeDays = 7 | 14 | 30
 
 export const RANGE_OPTIONS: { value: RangeDays; label: string }[] = [
   { value: 7, label: '7d' },
+  { value: 14, label: '14d' },
   { value: 30, label: '30d' },
-  { value: 90, label: '90d' },
 ]
 
 export type TypeFilter = TagType | 'all'
@@ -41,7 +44,7 @@ export function loadInsightsPrefs(uid: string | undefined): InsightsPrefs {
   try {
     const raw = JSON.parse(localStorage.getItem(key(uid)) || '{}')
     return {
-      range: oneOf(raw.range, [7, 30, 90] as const, DEFAULTS.range),
+      range: oneOf(raw.range, [7, 14, 30] as const, DEFAULTS.range),
       pinned: Array.isArray(raw.pinned) ? raw.pinned.filter((id: unknown) => typeof id === 'string') : [],
       chartType: oneOf(raw.chartType, ['line', 'bar', 'area'] as const, DEFAULTS.chartType),
       aggregation: oneOf(raw.aggregation, ['average', 'sum', 'min', 'max'] as const, DEFAULTS.aggregation),

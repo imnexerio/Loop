@@ -8,7 +8,7 @@ import { addDaysToDateString, listDatesBetween } from '../../utils/dateUtils'
 import TagCard from './TagCard'
 import TagDetail from './TagDetail'
 import { Segmented } from './details'
-import { InsightsPrefs, RANGE_OPTIONS, TypeFilter } from './prefs'
+import { InsightsPrefs, MAX_HISTORY_DAYS, RANGE_OPTIONS, TypeFilter } from './prefs'
 
 interface InsightsSectionProps {
   tags: Tag[]
@@ -41,7 +41,8 @@ const InsightsSection = ({ tags, today, prefs, onPrefsChange, onSelectDate, onOp
   const [detailTagId, setDetailTagId] = useState<string | null>(null)
 
   // Fetch twice the range so cards can compare with the previous period
-  const fetchStart = addDaysToDateString(today, -(range * 2 - 1))
+  // (capped at the history the app keeps)
+  const fetchStart = addDaysToDateString(today, -(Math.min(range * 2, MAX_HISTORY_DAYS) - 1))
   const { byDate, loading, hasData } = useSessionsInRange(fetchStart, today)
 
   const insightWindow = useMemo<InsightWindow>(() => {

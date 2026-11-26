@@ -30,7 +30,7 @@ A modern Progressive Web App for tracking daily habits and sessions with custom 
   - Notes (Text): entry count and latest note
   - Filter chips for the tag types you use; cards sorted by how much you use them
   - Pin cards to the top; unused tags collapse into their own section
-  - Date ranges of 7, 30 or 90 days, saved to localStorage
+  - Date ranges of 7, 14 or 30 days (compared with the period before, within the 60 days of history kept), saved to localStorage
 - **Tag Detail** - Tap a card for the full view: Line/Bar/Area charts with daily
   average/total/min/max, habit heatmap with weekday breakdown, clock time trends,
   and searchable notes that jump to their day
