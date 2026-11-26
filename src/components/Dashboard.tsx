@@ -145,8 +145,9 @@ const Dashboard = () => {
       <div className="pt-16">
         {activeTab === 'analysis' && (
           <AnalysisTab 
-            tags={tags} 
+            tags={tags}
             onAddSession={handleOpenAddSession}
+            onOpenProfile={handleOpenProfile}
           />
         )}
         {activeTab === 'addSession' && (

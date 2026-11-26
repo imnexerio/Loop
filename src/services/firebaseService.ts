@@ -20,7 +20,6 @@ import {
 } from 'firebase/database'
 import { database } from '../firebase/config'
 import { Tag, DayLog, Session, UserProfile, StoredImage, StoredAudio, AudioChunk, ImageType } from '../types'
-import { getDateStringUTC } from '../utils/dateUtils'
 
 // ============================================
 // TYPES
@@ -387,100 +386,54 @@ export async function getMonthDaysWithSessions(
 }
 
 // ============================================
-// ANALYTICS / CHART DATA
+// ANALYTICS / RANGE DATA
 // ============================================
 
-export type AggregationType = 'average' | 'sum' | 'min' | 'max'
+/**
+ * Convert a Firebase day's `sessions` object into a Session array (newest first)
+ */
+function toSessions(sessionsObj: Record<string, FirebaseSession> | undefined): Session[] {
+  const sessions: Session[] = Object.entries(sessionsObj || {}).map(([timestamp, session]) => ({
+    timestamp,
+    timezone: session.timezone,
+    location: session.location,
+    description: session.description,
+    tags: session.tags || {},
+    imageId: session.imageId,
+    audioId: session.audioId
+  }))
+  sessions.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp))
+  return sessions
+}
 
 /**
- * Get tag data for a date range (for charts)
+ * Subscribe to every session between two dates (YYYY-MM-DD, inclusive)
+ * with a single range query. The callback receives sessions keyed by date.
  */
-export async function getTagDataRange(
+export function subscribeToSessionRange(
   userId: string,
-  tagId: string,
-  days: number = 30,
-  aggregationType: AggregationType = 'average'
-): Promise<{ date: string; value: number | null }[]> {
-  try {
-    const endDate = new Date()
-    const startDate = new Date()
-    startDate.setUTCDate(startDate.getUTCDate() - days + 1)
-    
-    // Format dates as YYYY-MM-DD (UTC)
-    const startDateStr = getDateStringUTC(startDate)
-    const endDateStr = getDateStringUTC(endDate)
-    
-    const sessionsRef = ref(database, `users/${userId}/sessions`)
-    const rangeQuery = query(
-      sessionsRef,
-      orderByKey(),
-      startAt(startDateStr),
-      endAt(endDateStr)
-    )
-    
-    const snapshot = await get(rangeQuery)
-    
-    // Initialize result array with all dates
-    const result: { date: string; value: number | null }[] = []
-    for (let i = 0; i < days; i++) {
-      const date = new Date(startDate)
-      date.setUTCDate(date.getUTCDate() + i)
-      const dateStr = getDateStringUTC(date)
-      result.push({ date: dateStr, value: null })
-    }
-    
-    if (!snapshot.exists()) {
-      return result
-    }
-    
-    // Process data
-    const sessionsObj = snapshot.val()
-    
-    Object.entries(sessionsObj).forEach(([date, dayData]: [string, any]) => {
-      const sessionsObj = dayData.sessions || {}
-      const sessions: Session[] = Object.entries(sessionsObj).map(([timestamp, session]) => ({
-        timestamp: timestamp,
-        timezone: (session as FirebaseSession).timezone,
-        description: (session as FirebaseSession).description,
-        tags: (session as FirebaseSession).tags || {}
-      }))
-      
-      // Calculate aggregated value for this tag on this day
-      const values = sessions
-        .map(s => s.tags?.[tagId])
-        .filter((v): v is number => v !== undefined && v !== null && typeof v === 'number')
-      
-      if (values.length > 0) {
-        let aggregatedValue: number
-        
-        switch (aggregationType) {
-          case 'sum':
-            aggregatedValue = values.reduce((sum, val) => sum + val, 0)
-            break
-          case 'min':
-            aggregatedValue = Math.min(...values)
-            break
-          case 'max':
-            aggregatedValue = Math.max(...values)
-            break
-          case 'average':
-          default:
-            aggregatedValue = values.reduce((sum, val) => sum + val, 0) / values.length
-            break
-        }
-        
-        const resultIndex = result.findIndex(r => r.date === date)
-        if (resultIndex >= 0) {
-          result[resultIndex].value = Math.round(aggregatedValue * 100) / 100 // Round to 2 decimals
-        }
-      }
+  startDate: string,
+  endDate: string,
+  callback: (sessionsByDate: Record<string, Session[]>) => void
+): Unsubscribe {
+  const rangeQuery = query(
+    ref(database, `users/${userId}/sessions`),
+    orderByKey(),
+    startAt(startDate),
+    endAt(endDate)
+  )
+
+  return onValue(rangeQuery, (snapshot) => {
+    const days: Record<string, { sessions?: Record<string, FirebaseSession> }> = snapshot.val() || {}
+    const byDate: Record<string, Session[]> = {}
+    Object.entries(days).forEach(([date, dayData]) => {
+      byDate[date] = toSessions(dayData?.sessions)
     })
-    
-    return result
-  } catch (error) {
-    console.error(`Error getting tag data range for ${tagId}:`, error)
-    return []
-  }
+    callback(byDate)
+  }, (error) => {
+    console.error(`Error subscribing to sessions ${startDate}..${endDate}:`, error)
+    callback({})
+  })
 }
 
 // ============================================

@@ -26,8 +26,7 @@ export {
   subscribeToMonth,
   
   // Analytics
-  getTagDataRange as getChartDataCached,
-  type AggregationType,
+  subscribeToSessionRange,
   
   // Profile
   getUserProfile,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { usePin } from '../contexts/PinContext'
 import { Tag, TagType, UserSettings } from '../types'
+import { getTagTypeMeta } from '../tagTypes/registry'
 import { createTagCached, deleteTagCached, getUserProfile, updateUserProfile, getImage } from '../services/dataManager'
 import { uploadProfilePicture } from '../services/imageService'
 import { getLocationPermissionStatus, getCurrentLocation } from '../utils/locationUtils'
@@ -15,7 +16,7 @@ interface ProfileTabProps {
 
 const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) => {
   const { currentUser, logout } = useAuth()
-  const { isPinEnabled, setupPin, changePin, removePin } = usePin()
+  const { isPinEnabled, setupPin, changePin, removePin, verifyCurrentPin } = usePin()
   const [showAddTag, setShowAddTag] = useState(false)
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
   const [uploadingPicture, setUploadingPicture] = useState(false)
@@ -194,34 +195,6 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
       onTagsChange()
     } catch (error) {
       console.error('Error deleting tag:', error)
-    }
-  }
-
-  const getTagTypeLabel = (type: TagType) => {
-    const labels = {
-      number: 'Number',
-      rating: 'Rating',
-      checkbox: 'Yes/No',
-      text: 'Text',
-      clocktime: 'Clock Time'
-    }
-    return labels[type]
-  }
-
-  const getTagIcon = (type: TagType) => {
-    switch (type) {
-      case 'number':
-        return '🔢'
-      case 'rating':
-        return '⭐'
-      case 'checkbox':
-        return '✓'
-      case 'text':
-        return '📝'
-      case 'clocktime':
-        return '🕐'
-      default:
-        return '📊'
     }
   }
 
@@ -502,13 +475,13 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
                 className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getTagIcon(tag.type)}</span>
+                  <span className="text-2xl">{getTagTypeMeta(tag.type).icon}</span>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
                       {tag.name}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {getTagTypeLabel(tag.type)}
+                      {getTagTypeMeta(tag.type).label}
                       {(tag.type === 'number' || tag.type === 'rating') && 
                         ` (${tag.config.min}-${tag.config.max}${tag.config.unit ? ' ' + tag.config.unit : ''})`
                       }
@@ -551,6 +524,7 @@ const ProfileTab = ({ tags, onTagsChange, onProfileUpdate }: ProfileTabProps) =>
         onSetupPin={setupPin}
         onChangePin={changePin}
         onRemovePin={removePin}
+        onVerifyCurrentPin={verifyCurrentPin}
       />
     </div>
   )
