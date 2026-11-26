@@ -35,9 +35,6 @@ const AnalysisTab = ({ tags, onAddSession, onOpenProfile }: AnalysisTabProps) =>
             <Calendar
               onDateSelect={setSelectedDate}
               selectedDate={selectedDate}
-              tags={tags}
-              colorBy={prefs.calendarColorBy}
-              onColorByChange={(tagId) => updatePrefs({ calendarColorBy: tagId })}
             />
           </div>
 

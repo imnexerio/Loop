@@ -19,9 +19,8 @@ A modern Progressive Web App for tracking daily habits and sessions with custom 
 - **Real-time Updates** - Firebase Realtime Database integration
 
 ### 📅 **Analysis Tab**
-- **Interactive Calendar** - Month view with session indicators
+- **Interactive Calendar** - Plain month view; tap a day to see its sessions
 - **Day View** - Grid display of all sessions for selected date with quick add button
-- **Color by tag** - Shade calendar days by any tag (habit done, number/rating value, time or note logged)
 - **Insights** - One card per tag, visualized by its type
   - Habits (Yes/No): day grid, current streak, completion rate
   - Numbers: trend line, average, change vs the previous period

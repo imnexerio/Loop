@@ -22,8 +22,6 @@ export interface InsightsPrefs {
   pinned: string[]
   chartType: ChartType
   aggregation: AggregationType
-  /** Tag used to color the calendar, or null for plain session dots */
-  calendarColorBy: string | null
 }
 
 const DEFAULTS: InsightsPrefs = {
@@ -31,8 +29,10 @@ const DEFAULTS: InsightsPrefs = {
   pinned: [],
   chartType: 'line',
   aggregation: 'average',
-  calendarColorBy: null,
 }
+
+const stringList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 
 const key = (uid: string) => `insightsPrefs_${uid}`
 
@@ -45,10 +45,9 @@ export function loadInsightsPrefs(uid: string | undefined): InsightsPrefs {
     const raw = JSON.parse(localStorage.getItem(key(uid)) || '{}')
     return {
       range: oneOf(raw.range, [7, 14, 30] as const, DEFAULTS.range),
-      pinned: Array.isArray(raw.pinned) ? raw.pinned.filter((id: unknown) => typeof id === 'string') : [],
+      pinned: stringList(raw.pinned),
       chartType: oneOf(raw.chartType, ['line', 'bar', 'area'] as const, DEFAULTS.chartType),
       aggregation: oneOf(raw.aggregation, ['average', 'sum', 'min', 'max'] as const, DEFAULTS.aggregation),
-      calendarColorBy: typeof raw.calendarColorBy === 'string' ? raw.calendarColorBy : null,
     }
   } catch {
     return DEFAULTS
