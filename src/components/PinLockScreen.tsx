@@ -149,7 +149,7 @@ const PinLockScreen = () => {
               key={i}
               onClick={() => handleKeyPress(key)}
               disabled={isVerifying || pin.length >= PIN_LENGTH}
-              className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 text-2xl font-semibold text-gray-900 dark:text-white transition-all duration-150 disabled:opacity-50 shadow-sm hover:shadow-md active:scale-95"
+              className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 text-2xl font-semibold text-gray-900 dark:text-white transition-all duration-150 disabled:opacity-50 shadow-xs hover:shadow-md active:scale-95"
             >
               {key}
             </button>
@@ -160,7 +160,7 @@ const PinLockScreen = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-linear-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
       {/* Logo */}
       <div className="mb-8 text-center">
         <img 

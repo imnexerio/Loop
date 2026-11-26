@@ -378,7 +378,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
             <select
               value={aggregationType}
               onChange={(e) => setAggregationType(e.target.value as AggregationType)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
             >
               <option value="average">Daily Average</option>
               <option value="sum">Daily Sum</option>
@@ -395,7 +395,7 @@ const Charts = memo(({ tags }: ChartsProps) => {
             <select
               value={dateRange}
               onChange={(e) => setDateRange(Number(e.target.value) as 7 | 14 | 30)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-hidden"
             >
               <option value={7}>Last 7 days</option>
               <option value={14}>Last 14 days</option>

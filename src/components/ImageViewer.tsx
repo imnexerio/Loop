@@ -66,11 +66,11 @@ const ImageViewer = ({ imageUrl, onClose, title }: ImageViewerProps) => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
       onClick={onClose}
     >
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent z-10">
+      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-linear-to-b from-black/50 to-transparent z-10">
         <h3 className="text-white font-medium">{title || 'Session Image'}</h3>
         <button
           onClick={onClose}
@@ -106,13 +106,13 @@ const ImageViewer = ({ imageUrl, onClose, title }: ImageViewerProps) => {
       </div>
 
       {/* Controls */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-center gap-2 bg-gradient-to-t from-black/50 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-center gap-2 bg-linear-to-t from-black/50 to-transparent">
         <div className="flex items-center gap-2 bg-black/70 rounded-lg p-2">
           {/* Zoom Out */}
           <button
             onClick={handleZoomOut}
             disabled={zoom <= 0.5}
-            className="p-2 hover:bg-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 hover:bg-white/10 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Zoom Out"
           >
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +129,7 @@ const ImageViewer = ({ imageUrl, onClose, title }: ImageViewerProps) => {
           <button
             onClick={handleZoomIn}
             disabled={zoom >= 3}
-            className="p-2 hover:bg-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 hover:bg-white/10 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Zoom In"
           >
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +140,7 @@ const ImageViewer = ({ imageUrl, onClose, title }: ImageViewerProps) => {
           {/* Reset */}
           <button
             onClick={handleReset}
-            className="p-2 hover:bg-white/10 rounded transition-colors"
+            className="p-2 hover:bg-white/10 rounded-sm transition-colors"
             title="Reset View"
           >
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +151,7 @@ const ImageViewer = ({ imageUrl, onClose, title }: ImageViewerProps) => {
           {/* Download */}
           <button
             onClick={handleDownload}
-            className="p-2 hover:bg-white/10 rounded transition-colors"
+            className="p-2 hover:bg-white/10 rounded-sm transition-colors"
             title="Download Image"
           >
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -334,7 +334,7 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
               }}
               className={`w-full text-left p-3 rounded-lg mb-2 transition-colors group ${
                 chat.id === currentChatId
-                  ? 'bg-primary-50 dark:bg-gray-700 border-l-4 border-primary-600 shadow-sm'
+                  ? 'bg-primary-50 dark:bg-gray-700 border-l-4 border-primary-600 shadow-xs'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700/50'
               }`}
             >
@@ -356,7 +356,7 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
                     e.stopPropagation()
                     deleteChat(chat.id)
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-opacity cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-sm transition-opacity cursor-pointer"
                   title="Delete chat"
                   role="button"
                   tabIndex={0}
@@ -407,7 +407,7 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
                       li: ({ children }) => <li className="ml-2">{children}</li>,
                       strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                       em: ({ children }) => <em className="italic">{children}</em>,
-                      code: ({ children }) => <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-xs">{children}</code>,
+                      code: ({ children }) => <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded-sm text-xs">{children}</code>,
                       h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
                       h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
                       h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
@@ -444,7 +444,7 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
                 <button
                   key={index}
                   onClick={() => handleSuggestion(question)}
-                  className="text-left px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors shadow-sm"
+                  className="text-left px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors shadow-xs"
                 >
                   {question}
                 </button>
@@ -467,7 +467,7 @@ const ChatTab = ({ tags, showSidebar: externalShowSidebar, onCloseSidebar }: Cha
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Ask me anything about your habits..."
-            className="flex-1 px-4 py-3 sm:py-4 text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+            className="flex-1 px-4 py-3 sm:py-4 text-base rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden"
             disabled={loading}
           />
           <button

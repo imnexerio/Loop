@@ -36,7 +36,7 @@ function AppContent() {
   // Show loading while checking PIN state
   if (currentUser && pinLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-600 dark:text-gray-400">Loading...</p>
@@ -56,7 +56,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
+    <div className="min-h-screen bg-linear-to-br from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       {content}
     </div>
   )
