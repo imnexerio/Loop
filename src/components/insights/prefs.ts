@@ -15,6 +15,14 @@ export const RANGE_OPTIONS: { value: RangeDays; label: string }[] = [
   { value: 30, label: '30d' },
 ]
 
+/** The sleep view can also show every day the app keeps */
+export type SleepRangeDays = RangeDays | 60
+
+export const SLEEP_RANGE_OPTIONS: { value: SleepRangeDays; label: string }[] = [
+  ...RANGE_OPTIONS,
+  { value: 60, label: '60d' },
+]
+
 export type TypeFilter = TagType | 'all'
 
 export interface InsightsPrefs {
@@ -22,6 +30,7 @@ export interface InsightsPrefs {
   pinned: string[]
   chartType: ChartType
   aggregation: AggregationType
+  sleepRange: SleepRangeDays
 }
 
 const DEFAULTS: InsightsPrefs = {
@@ -29,6 +38,7 @@ const DEFAULTS: InsightsPrefs = {
   pinned: [],
   chartType: 'line',
   aggregation: 'average',
+  sleepRange: 30,
 }
 
 const stringList = (value: unknown): string[] =>
@@ -48,6 +58,7 @@ export function loadInsightsPrefs(uid: string | undefined): InsightsPrefs {
       pinned: stringList(raw.pinned),
       chartType: oneOf(raw.chartType, ['line', 'bar', 'area'] as const, DEFAULTS.chartType),
       aggregation: oneOf(raw.aggregation, ['average', 'sum', 'min', 'max'] as const, DEFAULTS.aggregation),
+      sleepRange: oneOf(raw.sleepRange, [7, 14, 30, 60] as const, DEFAULTS.sleepRange),
     }
   } catch {
     return DEFAULTS

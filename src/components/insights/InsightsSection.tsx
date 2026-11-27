@@ -2,11 +2,14 @@ import { useCallback, useMemo, useState } from 'react'
 import { Tag } from '../../types'
 import { useSessionsInRange } from '../../hooks/useSessionsInRange'
 import { buildInsight, InsightWindow, TagInsight } from '../../tagTypes/stats'
+import { buildSleepNights, findSleepTags } from '../../tagTypes/sleep'
 import { TAG_TYPE_ORDER, getTagTypeMeta } from '../../tagTypes/registry'
 import { formatShortDate } from '../../tagTypes/format'
 import { addDaysToDateString, listDatesBetween } from '../../utils/dateUtils'
 import TagCard from './TagCard'
 import TagDetail from './TagDetail'
+import SleepCard from './SleepCard'
+import SleepDetail from './SleepDetail'
 import { Segmented } from './details'
 import { InsightsPrefs, MAX_HISTORY_DAYS, RANGE_OPTIONS, TypeFilter } from './prefs'
 
@@ -39,6 +42,7 @@ const InsightsSection = ({ tags, today, prefs, onPrefsChange, onSelectDate, onOp
   const [filter, setFilter] = useState<TypeFilter>('all')
   const [showInactive, setShowInactive] = useState(false)
   const [detailTagId, setDetailTagId] = useState<string | null>(null)
+  const [sleepOpen, setSleepOpen] = useState(false)
 
   // Fetch twice the range so cards can compare with the previous period
   // (capped at the history the app keeps)
@@ -56,6 +60,19 @@ const InsightsSection = ({ tags, today, prefs, onPrefsChange, onSelectDate, onOp
   }, [today, range, fetchStart, byDate])
 
   const insights = useMemo(() => tags.map((tag) => buildInsight(tag, insightWindow)), [tags, insightWindow])
+
+  // Slept + Woke tags, shown together as nights of sleep
+  const sleepTags = useMemo(() => findSleepTags(tags), [tags])
+  const sleep = useMemo(() => {
+    if (!sleepTags) return null
+    const { dates, previousDates, byDate: days } = insightWindow
+    const { nights } = buildSleepNights(sleepTags, [...previousDates, ...dates], days)
+    const windowStart = dates[0]
+    return {
+      nights: nights.filter((n) => n.date >= windowStart),
+      previousNights: nights.filter((n) => n.date < windowStart),
+    }
+  }, [sleepTags, insightWindow])
 
   // Only offer filters for tag types this user actually has
   const typeCounts = useMemo(() => {
@@ -85,6 +102,8 @@ const InsightsSection = ({ tags, today, prefs, onPrefsChange, onSelectDate, onOp
   )
 
   const closeDetail = useCallback(() => setDetailTagId(null), [])
+  const closeSleep = useCallback(() => setSleepOpen(false), [])
+  const showSleep = sleepTags !== null && sleep !== null && (activeFilter === 'all' || activeFilter === 'clocktime')
   const detailInsight = detailTagId ? insights.find((i) => i.tag.id === detailTagId) : undefined
 
   if (tags.length === 0) {
@@ -156,6 +175,15 @@ const InsightsSection = ({ tags, today, prefs, onPrefsChange, onSelectDate, onOp
         <>
           {active.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {showSleep && (
+                <SleepCard
+                  tags={sleepTags}
+                  nights={sleep.nights}
+                  previousNights={sleep.previousNights}
+                  rangeDays={range}
+                  onOpen={() => setSleepOpen(true)}
+                />
+              )}
               {active.map((insight) => (
                 <TagCard
                   key={insight.tag.id}
@@ -208,6 +236,17 @@ const InsightsSection = ({ tags, today, prefs, onPrefsChange, onSelectDate, onOp
             </div>
           )}
         </>
+      )}
+
+      {sleepOpen && sleepTags && (
+        <SleepDetail
+          tags={sleepTags}
+          today={today}
+          range={prefs.sleepRange}
+          onRangeChange={(r) => onPrefsChange({ sleepRange: r })}
+          onSelectDate={onSelectDate}
+          onClose={closeSleep}
+        />
       )}
 
       {detailInsight && (

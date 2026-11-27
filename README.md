@@ -30,6 +30,11 @@ A modern Progressive Web App for tracking daily habits and sessions with custom 
   - Filter chips for the tag types you use; cards sorted by how much you use them
   - Pin cards to the top; unused tags collapse into their own section
   - Date ranges of 7, 14 or 30 days (compared with the period before, within the 60 days of history kept), saved to localStorage
+- **Sleep** - When you have Clock Time tags named "Slept" and "Woke", a Sleep card
+  pairs them into nights (duration = wake-up minus bedtime, correct across midnight
+  and timezones). Its full view shows each night as a bar on a 24-hour axis with
+  bedtime, wake-up and hours slept, 7-night average lines, weekend shading,
+  a 7/14/30/60-day range, and a list of nights missing one half
 - **Tag Detail** - Tap a card for the full view: Line/Bar/Area charts with daily
   average/total/min/max, habit heatmap with weekday breakdown, clock time trends,
   and searchable notes that jump to their day

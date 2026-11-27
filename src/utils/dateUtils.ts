@@ -323,3 +323,44 @@ export function getWeekdayOfDateString(dateStr: string): number {
   const [year, month, day] = dateStr.split('-').map(Number)
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay()
 }
+
+// ============================================
+// WALL-CLOCK TIME → INSTANT
+// ============================================
+
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>()
+
+/** How far `timezone` is ahead of UTC at `epoch`, in ms */
+function timezoneOffsetMs(epoch: number, timezone: string): number {
+  let formatter = offsetFormatters.get(timezone)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    })
+    offsetFormatters.set(timezone, formatter)
+  }
+  const parts: Record<string, number> = {}
+  for (const p of formatter.formatToParts(new Date(epoch))) parts[p.type] = Number(p.value)
+  const asUTC = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour % 24, parts.minute, parts.second)
+  return asUTC - Math.floor(epoch / 1000) * 1000
+}
+
+/**
+ * The instant (epoch ms) a wall-clock time on a YYYY-MM-DD date happened in
+ * an IANA timezone, e.g. 23:40 on 2026-11-26 in Asia/Kolkata.
+ * An invalid timezone is treated as UTC.
+ */
+export function zonedTimeToEpoch(dateStr: string, hour: number, minute: number, timezone: string): number {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const guess = Date.UTC(year, month - 1, day, hour, minute)
+  try {
+    // Second pass corrects for an offset change (DST) between the guess and the answer
+    const first = guess - timezoneOffsetMs(guess, timezone)
+    return guess - timezoneOffsetMs(first, timezone)
+  } catch {
+    return guess
+  }
+}

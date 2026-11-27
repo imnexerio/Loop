@@ -25,7 +25,7 @@ const AXIS_COLOR = '#9ca3af'
 // SHARED PIECES
 // ============================================
 
-const StatTile = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
+export const StatTile = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
   <div className="rounded-xl bg-gray-50 dark:bg-gray-700/40 p-3">
     <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
     <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{value}</p>
@@ -33,7 +33,7 @@ const StatTile = ({ label, value, hint }: { label: string; value: string; hint?:
   </div>
 )
 
-const SectionTitle = ({ children }: { children: ReactNode }) => (
+export const SectionTitle = ({ children }: { children: ReactNode }) => (
   <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{children}</h4>
 )
 
