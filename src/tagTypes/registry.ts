@@ -8,10 +8,13 @@
  */
 
 import { Tag, TagType } from '../types'
+import { getTimezoneAbbreviation } from '../utils/dateUtils'
 
 export interface ClockValue {
   hour: number
   minute: number
+  /** IANA timezone the time was logged in. Missing on older entries (use the session's timezone). */
+  timezone?: string
 }
 
 export interface TagTypeMeta {
@@ -80,7 +83,10 @@ export const TAG_TYPES: Record<TagType, TagTypeMeta> = {
     describeForAI: () => 'Clock Time (HH:MM)',
     isValue: isClockValue,
     format: (_tag, value) =>
-      isClockValue(value) ? formatClock(value.hour, value.minute) : String(value),
+      isClockValue(value)
+        ? formatClock(value.hour, value.minute) +
+          (value.timezone ? ` ${getTimezoneAbbreviation(value.timezone)}` : '')
+        : String(value),
   },
   text: {
     label: 'Text',

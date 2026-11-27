@@ -255,6 +255,35 @@ export function getTimezoneAbbreviation(timezone: string, timestamp?: number): s
   }
 }
 
+/**
+ * All IANA timezones for a picker, with the device's timezone first.
+ * Labels look like "Asia/Kolkata (GMT+5:30)".
+ */
+export function getTimezoneOptions(): { value: string; label: string }[] {
+  const device = getCurrentTimezone()
+  const supported: string[] =
+    (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
+  const zones = Array.from(new Set([device, 'UTC', ...supported]))
+
+  const offsetOf = (tz: string): string => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date())
+      return parts.find(p => p.type === 'timeZoneName')?.value ?? ''
+    } catch {
+      return ''
+    }
+  }
+
+  return zones.map(tz => {
+    const offset = offsetOf(tz)
+    const name = tz.replace(/_/g, ' ')
+    return {
+      value: tz,
+      label: `${tz === device ? 'Device: ' : ''}${name}${offset ? ` (${offset})` : ''}`
+    }
+  })
+}
+
 // ============================================
 // DATE STRING ARITHMETIC (YYYY-MM-DD)
 // ============================================

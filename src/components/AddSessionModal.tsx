@@ -5,7 +5,8 @@ import { compressImageToBase64, saveCompressedSessionImage, validateImageFile } 
 import { uploadSessionAudio } from '../services/audioService'
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder'
 import { Tag, Location } from '../types'
-import { formatDateShort, getCurrentTimezone, getDateInTimezone } from '../utils/dateUtils'
+import { formatDateShort, getCurrentTimezone, getDateInTimezone, getTimezoneOptions } from '../utils/dateUtils'
+import { isClockValue } from '../tagTypes/registry'
 import { getCurrentLocation } from '../utils/locationUtils'
 
 interface AddSessionModalProps {
@@ -78,11 +79,15 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
     clearAudio()
   }
 
-  // Get user's timezone once when component mounts
-  const userTimezone = useMemo(() => getCurrentTimezone(), [])
-  
-  // Get today's date in user's timezone
-  const today = useMemo(() => getDateInTimezone(Date.now(), userTimezone), [userTimezone])
+  // Today's date in the device's current timezone (for the header only).
+  // The modal stays mounted, so this is read on each render rather than once.
+  const today = getDateInTimezone(Date.now(), getCurrentTimezone())
+
+  // Timezone each clock-time tag was logged in (tagId -> IANA zone). Tags not in
+  // the map use the device's timezone; changed when logging something that happened elsewhere.
+  const [clockTimezones, setClockTimezones] = useState<Record<string, string>>({})
+  const timezoneOptions = useMemo(() => getTimezoneOptions(), [])
+  const getClockTimezone = (tagId: string) => clockTimezones[tagId] ?? getCurrentTimezone()
 
   // Fetch fresh tags when modal opens
   useEffect(() => {
@@ -205,18 +210,27 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       const cleanDescription = description.trim().replace(/^['"`]+|['"`]+$/g, '')
       
 
+      // Read the device timezone at save time, so it follows the user when travelling
+      const deviceTimezone = getCurrentTimezone()
+
       // Get the date in user's timezone (session belongs to the day in their local time)
-      const dateInUserTimezone = getDateInTimezone(timestamp, userTimezone)
-      
-      // Clock-time tags marked "Now" get the exact save time
+      const dateInUserTimezone = getDateInTimezone(timestamp, deviceTimezone)
+
+      // Clock-time tags marked "Now" get the exact save time in the device timezone;
+      // manually entered times carry the timezone picked in that tag's dropdown
       const finalTagValues = { ...tagValues }
-      nowTagIds.forEach(tagId => {
-        finalTagValues[tagId] = getClockTime(timestamp)
+      tags.forEach(tag => {
+        if (tag.type !== 'clocktime') return
+        if (nowTagIds.has(tag.id)) {
+          finalTagValues[tag.id] = { ...getClockTime(timestamp), timezone: deviceTimezone }
+        } else if (isClockValue(finalTagValues[tag.id])) {
+          finalTagValues[tag.id] = { ...finalTagValues[tag.id], timezone: clockTimezones[tag.id] ?? deviceTimezone }
+        }
       })
 
       const session: any = {
         timestamp: timestamp.toString(),
-        timezone: userTimezone,
+        timezone: deviceTimezone,
         tags: finalTagValues
       }
       
@@ -369,6 +383,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
       setCurrentLocation(null)
       setLocationLoading(false)
       setNowTagIds(new Set())
+      setClockTimezones({})
 
       // Focus textarea only once when modal opens (not on every re-render)
       setTimeout(() => {
@@ -406,6 +421,12 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
     })
     if (checked) {
       handleTagChange(tagId, getClockTime())
+      // "Now" means the device's current timezone
+      setClockTimezones(prev => {
+        const next = { ...prev }
+        delete next[tagId]
+        return next
+      })
     }
   }
   
@@ -522,8 +543,29 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 {tag.name}
               </label>
+              <div className="flex items-center gap-3 min-w-0">
+              {/* Timezone this time was logged in (locked to the device's while "Now" is ticked) */}
+              <select
+                value={getClockTimezone(tag.id)}
+                disabled={isNow}
+                onChange={(e) => {
+                  const tz = e.target.value
+                  setClockTimezones(prev => ({ ...prev, [tag.id]: tz }))
+                }}
+                onMouseDown={blurFocusedInput}
+                onTouchStart={blurFocusedInput}
+                aria-label={`Timezone for ${tag.name}`}
+                className="max-w-[11rem] truncate px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {!timezoneOptions.some(o => o.value === getClockTimezone(tag.id)) && (
+                  <option value={getClockTimezone(tag.id)}>{getClockTimezone(tag.id)}</option>
+                )}
+                {timezoneOptions.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
               {/* "Now" option - uses the time the session is saved */}
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
                 <input
                   type="checkbox"
                   checked={isNow}
@@ -532,6 +574,7 @@ const AddSessionModal = ({ isOpen, onClose, tags: initialTags, onSessionAdded }:
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Now</span>
               </label>
+              </div>
             </div>
             <div className="flex gap-2 items-center">
               {/* Hour Selector */}
