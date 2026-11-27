@@ -6,14 +6,14 @@ import { formatDuration, formatShortDate } from '../../tagTypes/format'
 import { useSessionsInRange } from '../../hooks/useSessionsInRange'
 import { addDaysToDateString, getWeekdayOfDateString, listDatesBetween } from '../../utils/dateUtils'
 import { Segmented, SectionTitle, StatTile } from './details'
-import { SLEEP_RANGE_OPTIONS, SleepRangeDays } from './prefs'
+import { RANGE_OPTIONS, RangeDays } from './prefs'
 import SleepChart from './SleepChart'
 
 interface SleepDetailProps {
   tags: SleepTags
   today: string
-  range: SleepRangeDays
-  onRangeChange: (r: SleepRangeDays) => void
+  range: RangeDays
+  onRangeChange: (r: RangeDays) => void
   onSelectDate: (date: string) => void
   onClose: () => void
 }
@@ -230,7 +230,7 @@ const SleepDetail = ({ tags, today, range, onRangeChange, onSelectDate, onClose 
         </div>
 
         <div className="px-4 sm:px-6 pt-4">
-          <Segmented label="Date range" value={range} onChange={onRangeChange} options={SLEEP_RANGE_OPTIONS} />
+          <Segmented label="Date range" value={range} onChange={onRangeChange} options={RANGE_OPTIONS} />
         </div>
 
         <div className="p-4 sm:p-6 overflow-y-auto">{body}</div>

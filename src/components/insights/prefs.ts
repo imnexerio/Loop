@@ -7,19 +7,12 @@ import type { ChartType } from './details'
 /** The app keeps at most this many days of history */
 export const MAX_HISTORY_DAYS = 60
 
-export type RangeDays = 7 | 14 | 30
+export type RangeDays = 7 | 14 | 30 | 60
 
 export const RANGE_OPTIONS: { value: RangeDays; label: string }[] = [
   { value: 7, label: '7d' },
   { value: 14, label: '14d' },
   { value: 30, label: '30d' },
-]
-
-/** The sleep view can also show every day the app keeps */
-export type SleepRangeDays = RangeDays | 60
-
-export const SLEEP_RANGE_OPTIONS: { value: SleepRangeDays; label: string }[] = [
-  ...RANGE_OPTIONS,
   { value: 60, label: '60d' },
 ]
 
@@ -30,7 +23,8 @@ export interface InsightsPrefs {
   pinned: string[]
   chartType: ChartType
   aggregation: AggregationType
-  sleepRange: SleepRangeDays
+  /** The sleep view keeps its own range */
+  sleepRange: RangeDays
 }
 
 const DEFAULTS: InsightsPrefs = {
@@ -54,7 +48,7 @@ export function loadInsightsPrefs(uid: string | undefined): InsightsPrefs {
   try {
     const raw = JSON.parse(localStorage.getItem(key(uid)) || '{}')
     return {
-      range: oneOf(raw.range, [7, 14, 30] as const, DEFAULTS.range),
+      range: oneOf(raw.range, [7, 14, 30, 60] as const, DEFAULTS.range),
       pinned: stringList(raw.pinned),
       chartType: oneOf(raw.chartType, ['line', 'bar', 'area'] as const, DEFAULTS.chartType),
       aggregation: oneOf(raw.aggregation, ['average', 'sum', 'min', 'max'] as const, DEFAULTS.aggregation),
