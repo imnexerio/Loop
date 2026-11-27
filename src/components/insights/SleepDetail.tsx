@@ -106,7 +106,9 @@ const SleepDetail = ({ tags, today, range, onRangeChange, onSelectDate, onClose 
   const bedAvg = useMemo(() => rollingAverage(nights.map((n) => n.start)), [nights])
   const wakeAvg = useMemo(() => rollingAverage(nights.map((n) => n.end)), [nights])
 
-  const selectedIndex = Math.max(0, nights.findIndex((n) => n.id === selectedId))
+  // Until a night is tapped, show the newest one (where the chart opens)
+  const found = nights.findIndex((n) => n.id === selectedId)
+  const selectedIndex = found === -1 ? nights.length - 1 : found
   const selected = nights.length ? nights[selectedIndex] : null
 
   const openDay = (date: string) => {
